@@ -1,0 +1,57 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo \"$PWD\"); bash \"$ROOT/.claude/hooks/lint.sh\"",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo \"$PWD\"); bash \"$ROOT/.claude/hooks/security-check.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_HOOK_LOG": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pytest*)",
+      "Bash(ruff*)",
+      "Bash(mypy*)",
+      "Bash(alembic*)",
+      "Bash(uvicorn*)",
+      "Bash(pip*)",
+      "Bash(uv*)",
+      "Bash(pnpm*)",
+      "Bash(node*)",
+      "Bash(tsc*)",
+      "Bash(eslint*)",
+      "Bash(docker*)",
+      "Bash(docker-compose*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
+      "Bash(pip-audit*)",
+      "Bash(pnpm audit*)"
+    ]
+  }
+}

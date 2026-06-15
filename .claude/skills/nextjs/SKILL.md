@@ -1,0 +1,352 @@
+---
+name: nextjs
+description: Conventions Next.js 14+ App Router. Server vs Client components, data fetching, route handlers, variables d'environnement, gestion d'erreurs, layouts.
+---
+
+# Conventions Next.js — App Router
+
+## Structure des dossiers
+
+```
+app/
+├── layout.tsx            # layout racine (Server Component)
+├── page.tsx              # page d'accueil
+├── error.tsx             # Error Boundary global
+├── loading.tsx           # Suspense fallback global
+├── (auth)/               # groupe de routes (sans segment URL)
+│   ├── login/page.tsx
+│   └── register/page.tsx
+├── dashboard/
+│   ├── layout.tsx        # layout spécifique dashboard
+│   ├── page.tsx
+│   └── [id]/page.tsx     # route dynamique
+└── api/
+    └── users/
+        └── route.ts      # Route Handler
+components/
+├── ui/                   # composants génériques (Button, Input...)
+└── features/             # composants métier (UserCard, OrderList...)
+lib/
+├── api.ts                # client API (fetch vers backend)
+└── utils.ts
+```
+
+## Server Components vs Client Components
+
+Par défaut : **Server Component** (pas de directive, pas d'interactivité).
+
+```typescript
+// app/users/page.tsx — Server Component (défaut)
+// Peut fetch directement, accéder aux cookies/headers, pas de bundle JS
+export default async function UsersPage() {
+  const users = await fetchUsers()   // fetch côté serveur
+  return <UserList users={users} />
+}
+
+// components/features/UserList.tsx — Client Component si interactif
+"use client"
+
+import { useState } from "react"
+
+export function UserList({ users }: { users: User[] }) {
+  const [filter, setFilter] = useState("")
+  // ...
+}
+```
+
+**Règle** : ajouter `"use client"` uniquement quand nécessaire (hooks, events, browser APIs).
+
+## Data Fetching — Server Components
+
+```typescript
+// app/products/page.tsx
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; q?: string }
+}) {
+  const page = Number(searchParams.page ?? 1)
+  const data = await fetchProducts({ page, q: searchParams.q })
+
+  return <ProductGrid items={data.items} total={data.total} page={page} />
+}
+
+// Fetch avec cache control
+async function fetchProducts(params: ProductParams) {
+  const url = new URL(`${process.env.API_URL}/products`)
+  Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, String(v)))
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 },   // revalider toutes les 60 secondes
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json() as Promise<PaginatedResponse<Product>>
+}
+```
+
+## Route Handlers (API interne)
+
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from "next/server"
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl
+  const page = Number(searchParams.get("page") ?? 1)
+
+  const data = await fetchUsers({ page })
+  return NextResponse.json(data)
+}
+
+export async function POST(request: NextRequest) {
+  const body: unknown = await request.json()
+  if (!isUserCreate(body)) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 422 })
+  }
+  const user = await createUser(body)
+  return NextResponse.json(user, { status: 201 })
+}
+```
+
+## Variables d'environnement
+
+```typescript
+// lib/config.ts — centralisation obligatoire
+const config = {
+  apiUrl:  process.env.API_URL      ?? "http://localhost:8000",
+  appName: process.env.NEXT_PUBLIC_APP_NAME ?? "My App",
+} as const
+
+export default config
+```
+
+**Règles** :
+- `NEXT_PUBLIC_*` → exposé au navigateur (valeurs non sensibles uniquement)
+- Sans préfixe → serveur uniquement (secrets, clés API)
+- Jamais `process.env.X` directement dans les composants — toujours via `lib/config.ts`
+
+## Gestion des erreurs
+
+```typescript
+// app/error.tsx — Error Boundary global (doit être Client Component)
+"use client"
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error
+  reset: () => void
+}) {
+  return (
+    <div>
+      <h2>Une erreur est survenue</h2>
+      <button onClick={reset}>Réessayer</button>
+    </div>
+  )
+}
+
+// app/dashboard/[id]/not-found.tsx
+export default function NotFound() {
+  return <div>Page introuvable</div>
+}
+
+// Dans un Server Component — déclencher le 404
+import { notFound } from "next/navigation"
+
+const user = await fetchUser(id)
+if (!user) notFound()   // affiche not-found.tsx
+```
+
+## Loading States
+
+```typescript
+// app/dashboard/loading.tsx — Suspense automatique
+export default function DashboardLoading() {
+  return <DashboardSkeleton />
+}
+
+// Pour un chargement partiel — Suspense manuel
+import { Suspense } from "react"
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <Suspense fallback={<ChartSkeleton />}>
+        <AsyncChart />   {/* Server Component async */}
+      </Suspense>
+    </div>
+  )
+}
+```
+
+## Stockage des tokens — règle absolue
+
+**Ne jamais stocker de JWT dans `localStorage` ou `sessionStorage`.**
+
+Tout script malveillant (dépendance npm compromise, XSS) peut lire `localStorage` et siphonner toutes les sessions actives. C'est une faille de conception, pas un oubli.
+
+```typescript
+// ❌ — erreur classique
+localStorage.setItem("access_token", token)
+localStorage.setItem("refresh_token", refreshToken)
+
+// ✅ — le refresh_token est un cookie httpOnly défini par le backend
+// L'access_token peut être en mémoire (variable React/Zustand), pas persisté
+```
+
+Le backend doit émettre le `refresh_token` via `Set-Cookie` (httpOnly, Secure, SameSite=Strict), pas dans le corps de la réponse. L'`access_token` à courte durée de vie peut vivre en mémoire React (state ou store) — il ne survit pas à un rechargement, ce qui est acceptable.
+
+## Client API — lib/api.ts
+
+```typescript
+// lib/api.ts — abstraction des appels vers le backend FastAPI
+import { redirect } from "next/navigation"
+
+const BASE_URL = config.apiUrl
+
+async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    credentials: "include",   // envoie le cookie httpOnly automatiquement
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  })
+
+  if (res.status === 401) {
+    // ❌ window.location.href = "/login" — plante en SSR (window inexistant)
+    // ✅ redirect() de Next.js — fonctionne côté serveur ET client
+    redirect("/login")
+  }
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new ApiError(res.status, error.detail ?? "Request failed")
+  }
+
+  return res.json() as Promise<T>
+}
+
+export const api = {
+  users: {
+    list: (page = 1) => apiFetch<PaginatedResponse<User>>(`/users?page=${page}`),
+    get:  (id: number) => apiFetch<User>(`/users/${id}`),
+    create: (data: UserCreate) => apiFetch<User>("/users", { method: "POST", body: JSON.stringify(data) }),
+  },
+}
+```
+
+## Streaming — SSE pour génération IA
+
+```typescript
+// lib/stream.ts
+export async function* streamGeneration(prompt: string): AsyncGenerator<string> {
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+    headers: { "Content-Type": "application/json" },
+  })
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    yield decoder.decode(value, { stream: true })
+  }
+}
+
+// Composant client
+"use client"
+export function StreamingOutput({ prompt }: { prompt: string }) {
+  const [output, setOutput] = useState("")
+
+  async function generate() {
+    setOutput("")
+    for await (const chunk of streamGeneration(prompt)) {
+      setOutput(prev => prev + chunk)
+    }
+  }
+  // ...
+}
+```
+
+## Anti-patterns
+
+```typescript
+// ❌ "use client" sur un layout — empêche l'optimisation server
+"use client"
+export default function RootLayout(...) { ... }
+
+// ❌ fetch côté client ce qui peut être fait côté serveur
+"use client"
+useEffect(() => { fetch("/api/users").then(...) }, [])  // perte de perf
+
+// ❌ process.env directement dans un composant client
+const url = process.env.API_URL   // undefined côté client sans NEXT_PUBLIC_
+
+// ✅ fetch dans un Server Component
+export default async function Page() {
+  const users = await api.users.list()
+  return <UserList users={users} />
+}
+```
+
+## Règles de qualité SonarQube
+
+### Props en lecture seule (S6759)
+
+Toujours marquer les props comme `Readonly` — elles ne doivent jamais être mutées dans un composant.
+
+```typescript
+// ❌
+type Props = { name: string; items: string[] }
+
+// ✅
+type Props = Readonly<{ name: string; items: readonly string[] }>
+
+function MyComponent({ name, items }: Props) { ... }
+```
+
+### Formulaires — labels associés (S6853)
+
+Chaque `<label>` doit avoir un `htmlFor` correspondant à l'`id` de son input.
+
+```tsx
+// ❌
+<label>Email</label>
+<input type="email" />
+
+// ✅
+<label htmlFor="email">Email</label>
+<input id="email" type="email" name="email" />
+```
+
+### Clés React — pas d'index de tableau (S6479)
+
+```tsx
+// ❌ — l'index change lors des insertions/suppressions, React produit des bugs subtils
+items.map((item, index) => <Card key={index} {...item} />)
+
+// ✅ — utiliser un identifiant stable
+items.map((item) => <Card key={item.id} {...item} />)
+```
+
+### Éléments interactifs natifs (S6848 / S1082)
+
+Toujours utiliser des éléments HTML natifs pour les actions interactives.
+
+```tsx
+// ❌ — div cliquable sans rôle ni gestion clavier
+<div onClick={handleClick}>Cliquer</div>
+
+// ✅
+<button type="button" onClick={handleClick}>Cliquer</button>
+```
