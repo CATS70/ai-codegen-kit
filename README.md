@@ -11,8 +11,8 @@ Kit de génération de code assisté par IA, production-ready et réutilisable s
 Ce kit accompagne la série LinkedIn *"Après le vibe coding"* :
 → Article 1 — [Après le vibe coding : comment structurer la génération de code avec Claude Code](https://www.linkedin.com/pulse/apr%C3%A8s-le-vibe-coding-comment-structurer-la-g%C3%A9n%C3%A9ration-felix-ldfpf/)
 → Article 2 — [CLAUDE.md, skills, blueprints : externaliser le contexte de génération](https://www.linkedin.com/posts/cfelixdevia_encoder-les-conventions-d%C3%A9quipe-pour-que-activity-7466039804313460736-07Ub)
-→ Article 3 — Hooks et commandes : la couche déterministe qui manquait *(à venir)*
-→ Article 4 — Ce qu'on a vraiment appris — et ce que ça dit du rôle d'architecte *(à venir)*
+→ Article 3 — [Hooks et commandes : la couche déterministe qui manquait](https://www.linkedin.com/pulse/hooks-et-commandes-la-couche-d%C3%A9terministe-qui-manquait-felix-llgne/)
+→ Article 4 — [Ce qu'on a vraiment appris — et ce que ça dit du rôle d'architecte](https://www.linkedin.com/pulse/ce-quon-vraiment-appris-et-que-%C3%A7a-dit-du-r%C3%B4le-christophe-felix-vscfe)
 
 ---
 
@@ -136,9 +136,11 @@ Pour désactiver : remettre `CLAUDE_HOOK_LOG` à `""` dans `settings.json`.
 
 ---
 
-## Les blueprints : choisir l'architecture
+## Les blueprints : le cœur du kit
 
-Un blueprint = un type de projet reconnaissable. Il définit la structure de fichiers et les skills à charger.
+Un blueprint est plus qu'un template de sélection — c'est **l'endroit où encoder vos propres décisions d'architecture**. Il définit la structure de fichiers, les composants attendus, les contraintes métier, et les skills à charger. C'est là que vivent les choix qui font que votre projet ressemble à votre projet, et pas à une API générique sortie d'un tutoriel.
+
+Chaque blueprint livré dans ce kit est un point de départ. Il est conçu pour être **modifié** : ajoutez vos contraintes spécifiques, retirez les composants non pertinents, adaptez la structure de fichiers à vos conventions d'équipe. Un blueprint adapté à votre contexte vaut mieux qu'un blueprint générique appliqué tel quel.
 
 `/implement` identifie automatiquement le blueprint à partir de `spec-final.md`. Le champ "Blueprint identifié" dans `spec-final.md` (généré par `/spec`) peut le préciser explicitement.
 
@@ -176,13 +178,17 @@ Les skills `caching` et `observability` sont chargés selon le volume défini da
 
 ## Adapter le kit à votre projet
 
-Le `CLAUDE.md` livré est générique. Pour l'adapter :
+Tout est modifiable — c'est l'intention. Ce kit n'est pas à utiliser tel quel : c'est une base de départ à s'approprier.
 
-1. Supprimer les blueprints et skills non pertinents pour votre stack
-2. Ajouter vos conventions spécifiques dans `CLAUDE.md` (< 200 lignes — au-delà, l'attention de l'agent se dilue)
-3. Ajuster `lint.sh` si vous avez des linters spécifiques
+**`CLAUDE.md`** — remplacer les conventions génériques par celles de votre équipe. Garder sous 200 lignes : au-delà, l'attention de l'agent se dilue. Les détails techniques n'ont pas leur place ici — ils vont dans les skills.
 
-**Ce qu'il ne faut pas faire :** Surcharger `CLAUDE.md` pour tout couvrir. Les détails techniques vont dans les skills. `CLAUDE.md` décrit les règles transversales du projet, pas chaque convention de chaque librairie.
+**Blueprints** — modifier la structure de fichiers, les contraintes, les composants pour refléter vos choix d'architecture. Ajouter un blueprint pour un cas d'usage qui n'existe pas encore dans le kit.
+
+**Skills** — enrichir les skills existants avec les conventions propres à votre équipe (patterns d'injection, règles de nommage, librairies imposées). Créer de nouveaux skills pour des domaines non couverts.
+
+**Hooks** — ajuster les linters dans `lint.sh` selon votre stack. Ajouter des vérifications dans `security-check.sh` pour des patterns dangereux spécifiques à votre contexte.
+
+**Commandes** — modifier `/implement` pour qu'il reflète votre workflow. Ajouter des commandes pour des étapes récurrentes dans votre équipe.
 
 ---
 
