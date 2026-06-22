@@ -12,9 +12,7 @@ Lire `spec-final.md`. Si le fichier est absent, stopper et demander d'exécuter 
 
 ### Étape 2 — Identifier le blueprint
 
-Lire le champ "Blueprint identifié" dans `spec-final.md`. Si renseigné, utiliser ce blueprint directement.
-
-Sinon, analyser les fonctionnalités et choisir le blueprint le plus proche dans `.claude/architectures/` :
+`spec-final.md` ne propose jamais de nom de blueprint — ce choix est entièrement à la charge de `/implement`. Analyser les exigences fonctionnelles (FR-xxx) et choisir le blueprint le plus proche dans `.claude/architectures/` :
 
 | Mots-clés dans la spec | Blueprint |
 |---|---|
@@ -56,7 +54,7 @@ Charger ensuite les skills du blueprint dans cet ordre :
    - Ne jamais charger `llm-router` ET `litellm` ensemble — choisir l'un ou l'autre
 5. Skills frontend (`nextjs`, `typescript`)
 6. Skills transverses (`testing`, `docker`, `git`)
-7. **Skills de charge — selon `## Niveau de charge` dans `spec-final.md` :**
+7. **Skills de charge — selon la NFR taguée "Charge" dans `## Exigences non-fonctionnelles` de `spec-final.md` :**
 
    | Niveau | Skills à charger | Ajustements |
    |--------|-----------------|-------------|
@@ -64,7 +62,25 @@ Charger ensuite les skills du blueprint dans cet ordre :
    | MOYEN  | `observability` (Prometheus activé) + `caching` | `db_pool_size=20` ; Redis dans docker-compose |
    | ÉLEVÉ  | `observability` (OpenTelemetry activé) + `caching` (ARQ activé) | `db_pool_size=5` + PgBouncer recommandé ; Redis + worker dans docker-compose |
 
-   Si `## Niveau de charge` est absent de `spec-final.md`, traiter comme **FAIBLE** et signaler l'omission.
+   Si aucune NFR "Charge" n'est trouvée dans `spec-final.md`, traiter comme **FAIBLE** et signaler l'omission — cette spec a été générée avant que `/spec` ne rende cette NFR obligatoire.
+
+8. **Autres NFR — chaque exigence non-fonctionnelle de `spec-final.md` (hors Charge) DOIT se traduire par une action identifiable**, selon le signal détecté dans son texte :
+
+   | NFR catégorie | Signal détecté dans le texte de la NFR | Action |
+   |---|---|---|
+   | Sécurité | "limiter la fréquence", "anti-abus", "rate limiting" | Charger `caching` (rate limiter Redis) même si la NFR-Charge est FAIBLE |
+   | Sécurité | "chiffrement au repos", "donnée sensible" | Appliquer le chiffrement de colonne du skill `database-design` |
+   | Sécurité | "audit", "traçabilité", "historique des actions" | Appliquer le pattern audit trail du skill `database-design` |
+   | Performance | seuil de temps de réponse explicite (ex: "< 2s", "quasi instantané") | Charger `caching` (cache-aside) même si la NFR-Charge est FAIBLE ; vérifier les index sur les colonnes filtrées avec le skill `database-design` |
+   | Disponibilité | "ne doit jamais bloquer", "résilient à une panne", SLA explicite | Charger `observability` (health checks) même si la NFR-Charge est FAIBLE ; appliquer un retry/backoff sur les appels externes concernés (pattern du skill `notifications`, réutilisable hors notifications) |
+   | Conformité | RGPD, suppression/anonymisation de données | Appliquer cascade delete et/ou soft-delete du skill `database-design` |
+   | Conformité | PCI-DSS (paiement) | Vérifier que le skill `payment` déjà chargé ne stocke aucune donnée de carte (délégué à Stripe) |
+   | Contrainte externe | Système d'authentification externe imposé (LDAP/SAML/SSO tiers) | Aucun skill du kit ne couvre ce cas — **signaler explicitement à l'utilisateur avant de continuer**, ne pas improviser une intégration |
+   | Contrainte externe | Hébergement imposé avec contrainte technique (ex: serverless, on-premise) | Signaler l'impact sur `Dockerfile`/`docker-compose.yml`, adapter si possible sinon signaler la limite |
+
+   Ces skills s'**ajoutent** à ceux déjà chargés par la table de charge (point 7) — ne jamais retirer un skill déjà chargé pour ce motif.
+
+   Si une NFR ne correspond à aucune ligne de cette table mais implique manifestement un changement de skill ou de configuration, appliquer la solution la plus simple avec les skills déjà chargés et documenter le choix en commentaire. Si aucune solution raisonnable n'existe avec les skills disponibles, signaler la limite à l'utilisateur plutôt que d'improviser (cohérent avec la règle générale "signaler à l'utilisateur si une contrainte du blueprint ne peut pas être respectée").
 
 ### Étape 3b — Vérifier l'environnement
 
@@ -104,6 +120,20 @@ Créer l'arborescence de fichiers définie dans le blueprint. Créer les fichier
 Coverage.py ne trace pas fiablement le code exécuté dans le processus ASGI d'httpx avec pytest-asyncio.
 Les branches internes des services (ex: merge de panier, annulation, erreurs métier) doivent être
 testées directement pour être comptabilisées.
+
+**Dériver les tests des AC-xxx et EC-xxx de `spec-final.md`** : avant d'écrire les tests d'un domaine, relire les sections "Scénarios d'acceptation" et "Edge cases" de `spec-final.md` et identifier celles qui concernent ce domaine.
+
+- Chaque scénario AC-xxx devient au moins un test, nommé pour référencer son identifiant (ex: `test_create_order_succeeds_with_valid_payment  # AC-003`)
+- Chaque edge case EC-xxx devient au moins un test d'erreur (ex: `test_create_order_rejects_invalid_card  # EC-005`)
+- Si un AC-xxx ou un EC-xxx ne peut pas être traduit en test direct (dépendance externe non mockable, scénario UI pur), le couvrir via Playwright (skill `nextjs`/`testing`) ou documenter explicitement pourquoi dans un commentaire
+- À la fin de l'étape 5, vérifier qu'aucun AC-xxx ou EC-xxx n'est resté sans test correspondant — le signaler à l'utilisateur si c'est le cas
+
+**Dériver les tests des NFR-xxx (hors Charge)** : contrairement aux AC-xxx/EC-xxx, toutes les catégories de NFR ne sont pas testables de la même façon en pytest — appliquer la règle selon la catégorie :
+
+- **Sécurité** et **Conformité** : DOIVENT avoir un test direct, comme un AC-xxx (ex: `test_dirigeants_refresh_is_rate_limited  # NFR-005`, `test_deleting_user_cascades_to_entities  # NFR-003`). Ce sont des comportements déterministes, donc testables de façon fiable.
+- **Disponibilité** : généralement déjà couverte par un EC-xxx décrivant la panne externe correspondante (ex: EC-003 couvre déjà NFR-004 dans l'exemple ReachMyGoals) — vérifier qu'un tel EC-xxx existe avant d'écrire un test redondant ; sinon écrire un test de résilience dédié (mock de l'échec externe, assertion que l'application ne plante pas).
+- **Performance** : **ne jamais** écrire d'assertion de timing dans la suite pytest standard (`assert elapsed < 2` est flaky — dépend de la machine, source de faux échecs en CI). L'action attendue est l'application de la mesure technique elle-même (cache, index — voir étape 3 point 8), pas un test qui mesure le temps. Documenter dans le rapport de fin d'implémentation que la validation du seuil chiffré nécessite un outil de charge dédié, hors périmètre des tests automatisés, sauf demande explicite de l'utilisateur (ex: `pytest-benchmark`).
+- **Contrainte externe** : pas de test attendu si elle a été traitée comme une limite signalée à l'utilisateur (étape 3 point 8) plutôt que comme du code.
 
 ### Étape 5 — Implémenter
 
@@ -198,6 +228,11 @@ Avant de terminer, vérifier :
 - [ ] `conftest.py` avec les fixtures PostgreSQL + NullPool créé (template du skill `testing`)
 - [ ] `.env.example` et `.env.test.example` créés avec toutes les variables
 - [ ] `tests/test_services.py` créé avec au moins un test direct par service
+- [ ] Chaque AC-xxx et EC-xxx de `spec-final.md` a au moins un test correspondant
+- [ ] Chaque NFR-xxx Sécurité/Conformité de `spec-final.md` a un test direct correspondant
+- [ ] Chaque NFR-xxx Disponibilité est couverte par un EC-xxx existant ou un test de résilience dédié
+- [ ] Chaque NFR-xxx Performance a déclenché l'application d'une mesure technique (cache/index), sans assertion de timing dans pytest
+- [ ] Chaque NFR-xxx Contrainte externe non couvrable par les skills a été signalée à l'utilisateur
 - [ ] `entrypoint.sh` créé si SQLAlchemy est chargé (migrations avant démarrage)
 - [ ] `frontend/package.json` créé si nextjs est chargé
 - [ ] `frontend/public/.gitkeep` créé si nextjs est chargé

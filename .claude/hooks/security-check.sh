@@ -5,13 +5,14 @@
 
 set -euo pipefail
 
-PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
 PROJECT_NAME=$(basename "$PROJECT_ROOT")
 
 # ─── Log (désactivé si CLAUDE_HOOK_LOG est vide ou absent) ────────────────────
 LOG_FILE="${CLAUDE_HOOK_LOG:-}"
 LOG_FILE="${LOG_FILE/#\~/$HOME}"
-log() { [[ -n "$LOG_FILE" ]] && echo "[$(date '+%H:%M:%S')] [${PROJECT_NAME}] [security] $*" >> "$LOG_FILE"; }
+# Bloc if (pas de "&&") : sinon log() renvoie 1 quand LOG_FILE est vide, et set -e avorte le script au 1er appel
+log() { if [[ -n "$LOG_FILE" ]]; then echo "[$(date '+%H:%M:%S')] [${PROJECT_NAME}] [security] $*" >> "$LOG_FILE"; fi; }
 
 INPUT=$(cat)
 

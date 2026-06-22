@@ -17,7 +17,7 @@ Si le périmètre est flou, poser **au maximum 3 questions** avant de continuer 
 
 ### Étape 2 — Lire l'existant
 
-1. Lire `spec-final.md` pour comprendre le périmètre déjà implémenté
+1. Lire `spec-final.md` pour comprendre le périmètre déjà implémenté, et relever le plus grand identifiant existant pour chaque préfixe (FR-xxx, NFR-xxx, AC-xxx, EC-xxx)
 2. Lire la structure du projet (répertoires et fichiers)
 3. Lire les fichiers les plus susceptibles d'être impactés
 4. Identifier les conventions en place : nommage, patterns, style
@@ -69,13 +69,18 @@ Respecter le style du code existant — ne pas imposer les conventions des skill
 
 ### Étape 6 — Finaliser
 
-1. Créer les tests pour le code ajouté
-2. Mettre à jour `spec-final.md` : ajouter la fonctionnalité dans "Fonctionnalités principales" et les nouvelles entités dans "Entités métier"
+1. Créer les tests pour le code ajouté, dérivés des nouveaux AC-xxx/EC-xxx (voir étape 3 ci-dessous)
+2. Mettre à jour `spec-final.md` :
+   - Ajouter les nouvelles exigences dans "Exigences fonctionnelles" en continuant la numérotation FR-xxx (jamais de réutilisation ou de redémarrage à FR-001)
+   - Ajouter les nouvelles exigences non-fonctionnelles dans "Exigences non-fonctionnelles" en continuant NFR-xxx, si le delta en introduit
+   - Ajouter les nouveaux scénarios dans "Scénarios d'acceptation" (AC-xxx) et les nouveaux cas limites dans "Edge cases" (EC-xxx), même règle de numérotation continue
+   - Ajouter les nouvelles entités dans "Entités métier"
 3. Mettre à jour `.env.example` si de nouvelles variables d'environnement ont été ajoutées
 
 ## Règles
 
 - Ne jamais modifier un fichier hors du delta validé sans confirmation
 - Ne pas ajouter de dépendances sans signaler l'impact sur `pyproject.toml` / `package.json`
+- Les identifiants FR-xxx, NFR-xxx, AC-xxx, EC-xxx sont permanents : ne jamais réutiliser un numéro déjà attribué, même si l'exigence correspondante a été retirée entre-temps
 - Un ajout multi-tenant doit systématiquement inclure `org_id` sur les nouvelles tables et `get_current_tenant` sur les nouvelles routes
 - Si la fonctionnalité demandée chevauche une fonctionnalité existante, signaler le risque de duplication avant d'implémenter
