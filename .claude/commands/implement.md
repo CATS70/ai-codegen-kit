@@ -112,6 +112,11 @@ Créer l'arborescence de fichiers définie dans le blueprint. Créer les fichier
 - `frontend/package.json` — avec toutes les dépendances Next.js (ne pas laisser ce fichier à générer par l'utilisateur)
 - `frontend/public/.gitkeep` — Next.js attend ce répertoire ; sans lui, le build Docker échoue
 
+**Couverture frontend par FR-xxx** : classer chaque FR-xxx selon son acteur (cf `## Utilisateurs et rôles`) —
+- **Acteur = rôle humain** (Utilisateur, Admin...) : une route API testée ne suffit pas. Construire la page ou le composant frontend qui permet réellement de réaliser l'action (formulaire, bouton, sélecteur, page de liste...). Une FR-xxx de ce type sans aucun point d'entrée dans l'UI n'est **pas** considérée comme implémentée, même si le backend est prêt et testé.
+- **Acteur = système externe** (API tierce consommée, client externe type extension navigateur) : le backend seul suffit, aucune UI n'est attendue.
+- En cas de doute sur la classification d'une FR-xxx, l'implémenter avec son UI plutôt que de l'omettre — le coût d'une page superflue est bien plus faible que celui d'une fonctionnalité invisible pour l'utilisateur final.
+
 **Règle des deux niveaux de tests** (obligatoire pour atteindre 80% de couverture) :
 
 - `tests/test_<domaine>.py` : teste le comportement HTTP externe (status codes, payloads, auth)
@@ -237,9 +242,23 @@ Avant de terminer, vérifier :
 - [ ] `frontend/package.json` créé si nextjs est chargé
 - [ ] `frontend/public/.gitkeep` créé si nextjs est chargé
 - [ ] `sonar-project.properties` créé avec `sonar.python.coverage.reportPaths=backend/coverage.xml`
+- [ ] Si nextjs est chargé : chaque FR-xxx dont l'acteur est un rôle humain a un point d'entrée fonctionnel dans le frontend (pas seulement une route API testée)
+
+### Étape 8 — Rapport de complétion
+
+Avant de terminer, produire un tableau de couverture FR-xxx — sur le même principe que le rapport de `/spec` — et le présenter à l'utilisateur, pas seulement en cas de question :
+
+| FR-xxx | Acteur | Backend | Frontend | Statut |
+|---|---|---|---|---|
+| FR-001 | Utilisateur | ✅ testé | ✅ page/composant | Complet |
+| FR-00X | Service externe | ✅ testé | — (non applicable) | Complet |
+| FR-00Y | Admin | ✅ testé | ❌ manquant | **Incomplet** |
+
+Toute ligne **Incomplet** doit être signalée explicitement avec sa raison (oubli, hors périmètre temporaire, dépendance bloquante) — ne jamais laisser une FR-xxx orpheline sans la nommer dans ce rapport.
 
 ## Règles
 
 - Ne jamais implémenter au-delà du périmètre défini dans `spec-final.md`
 - Si une décision technique n'est pas couverte par les skills, choisir la solution la plus simple
 - Signaler à l'utilisateur si une contrainte du blueprint ne peut pas être respectée
+- Une FR-xxx n'est complète que si son acteur humain peut réellement l'exécuter depuis l'interface — un backend testé sans UI correspondante reste une FR-xxx incomplète, à signaler dans le rapport de l'étape 8
