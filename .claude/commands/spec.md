@@ -105,7 +105,7 @@ Une fois les réponses obtenues, générer `spec-final.md` avec ce format :
 [2-3 phrases décrivant ce que fait le système]
 
 ## Exigences fonctionnelles
-- FR-001: Le système DOIT [action vérifiable et non ambiguë]
+- FR-001: Le système DOIT [action vérifiable et non ambiguë, une seule cible — voir règle d'atomicité]
 - FR-002: Le système DOIT [action vérifiable et non ambiguë]
 - ...
 
@@ -204,6 +204,7 @@ Rapporter à l'utilisateur :
 - La NFR-Charge décide si `/implement` doit charger les skills `caching` et `observability` (voir table ci-dessous)
 - Les critères de succès ne doivent jamais mentionner une techno, un framework ou un détail d'implémentation — reformuler du point de vue utilisateur/métier
 - Les scénarios d'acceptation (AC-xxx) et edge cases (EC-xxx) sont la matière première des tests générés par `/implement` — les rédiger avec une granularité testable (un scénario = un test)
+- **Règle d'atomicité des FR-xxx** : une FR-xxx ne couvre qu'une seule cible vérifiable. Si une action s'applique à plusieurs entités/cibles distinctes (ex: "trier les colonnes des tables Entreprises, Personnes et Tâches"), la scinder en une FR-xxx par cible (FR-018a, FR-018b... ou des numéros distincts) — sinon une cible peut rester non implémentée sans qu'aucun test ni aucune vérification ne le révèle, la FR globale paraissant satisfaite par les cibles déjà faites. À l'étape 5 (auto-validation), relire chaque FR-xxx et scinder toute formulation énumérant plusieurs cibles.
 - Une recommandation n'est jamais imposée silencieusement : elle doit toujours être présentée à l'utilisateur avec sa justification, qui choisit de l'accepter ou non
 - L'auto-validation a une limite claire (3 itérations) pour rester actionnable, mais le but est la rigueur, pas la vitesse — ne pas couper les coins ronds pour finir plus vite
 

@@ -246,15 +246,18 @@ Avant de terminer, vérifier :
 
 ### Étape 8 — Rapport de complétion
 
-Avant de terminer, produire un tableau de couverture FR-xxx — sur le même principe que le rapport de `/spec` — et le présenter à l'utilisateur, pas seulement en cas de question :
+**Avant de remplir le tableau, décomposer toute FR-xxx composée** : si le texte d'une FR-xxx énumère plusieurs cibles distinctes (plusieurs entités, plusieurs tables, "X, Y et Z"), la traiter comme autant de lignes à vérifier séparément dans le tableau ci-dessous — jamais comme une seule case à cocher globale. Une FR-xxx composée n'est Backend ✅ que si **chacune** de ses cibles a été vérifiée individuellement dans le code, pas seulement parce qu'un test associé à cette FR passe (un test peut n'avoir été écrit que pour le sous-ensemble déjà implémenté, et passer malgré tout — ce n'est pas une preuve de complétude, relire le code lui-même pour chaque cible).
 
-| FR-xxx | Acteur | Backend | Frontend | Statut |
-|---|---|---|---|---|
-| FR-001 | Utilisateur | ✅ testé | ✅ page/composant | Complet |
-| FR-00X | Service externe | ✅ testé | — (non applicable) | Complet |
-| FR-00Y | Admin | ✅ testé | ❌ manquant | **Incomplet** |
+Produire un tableau de couverture FR-xxx — sur le même principe que le rapport de `/spec` — et le présenter à l'utilisateur, pas seulement en cas de question :
 
-Toute ligne **Incomplet** doit être signalée explicitement avec sa raison (oubli, hors périmètre temporaire, dépendance bloquante) — ne jamais laisser une FR-xxx orpheline sans la nommer dans ce rapport.
+| FR-xxx | Cible | Acteur | Backend | Frontend | Statut |
+|---|---|---|---|---|---|
+| FR-001 | — | Utilisateur | ✅ testé | ✅ page/composant | Complet |
+| FR-00X | — | Service externe | ✅ testé | — (non applicable) | Complet |
+| FR-018 | Entreprises | Utilisateur | ✅ vérifié dans le code | ✅ | Complet |
+| FR-018 | Tâches | Utilisateur | ❌ absent du code | ❌ | **Incomplet** |
+
+Toute ligne **Incomplet** doit être signalée explicitement avec sa raison (oubli, hors périmètre temporaire, dépendance bloquante) — ne jamais laisser une FR-xxx ou une cible orpheline sans la nommer dans ce rapport.
 
 ## Règles
 
