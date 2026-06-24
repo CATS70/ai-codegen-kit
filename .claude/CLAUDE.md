@@ -9,13 +9,14 @@ Stack cible : Python / TypeScript. Approche vibecoding.
 ```
 spec.md
   → /spec             clarification interactive → génère spec-final.md
-  → /implement        identifie blueprint → charge skills → code
+  → /screens          (si rôle humain présent) décrit les écrans → génère screens-final.md, validé par l'utilisateur
+  → /implement        identifie blueprint → charge skills → code (suit screens-final.md si présent)
   → hook lint         PostToolUse automatique → feedback si erreurs
   → /test             lance les tests
   → /security-audit   audit OWASP (à la demande)
 ```
 
-Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.md`.
+Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.md`. Si `spec-final.md` contient au moins un rôle humain, `/implement` exige aussi `screens-final.md` (généré par `/screens`).
 
 ---
 
@@ -23,8 +24,9 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 
 | Commande          | Rôle                                              |
 |-------------------|---------------------------------------------------|
-| `/spec`           | Clarifie la spec en 5 questions max → spec-final.md |
-| `/implement`      | Lit spec-final.md, identifie blueprint, code      |
+| `/spec`           | Clarification interactive et rigoureuse → spec-final.md |
+| `/screens`        | Décrit les écrans de l'application (si rôle humain) → screens-final.md, validé par l'utilisateur |
+| `/implement`      | Lit spec-final.md (et screens-final.md si présent), identifie blueprint, code |
 | `/fix`            | Corrige un bug ciblé sans refactorer              |
 | `/add`            | Ajoute une fonctionnalité en mode delta           |
 | `/test`           | Lance les tests du projet                         |
@@ -36,13 +38,13 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 
 ## Logique de /implement
 
-1. Lire `spec-final.md`
+1. Lire `spec-final.md` (et `screens-final.md` si un rôle humain est présent — sinon le demander avant de continuer)
 2. Identifier le blueprint dans `.claude/architectures/`
 3. Lister les composants du blueprint
 4. Charger les skills associés à chaque composant
 5. Charger `skills/security/` systématiquement
-6. Charger `caching` et `observability` selon `## Niveau de charge` (FAIBLE/MOYEN/ÉLEVÉ)
-7. Coder en respectant les conventions des skills chargés
+6. Charger `caching` et `observability` selon la NFR taguée "Charge" (FAIBLE/MOYEN/ÉLEVÉ)
+7. Coder en respectant les conventions des skills chargés ; construire le frontend exactement selon `screens-final.md` s'il existe
 
 ---
 
@@ -74,6 +76,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `notifications`     | Email, push, in-app, idempotence, retry backoff     |
 | `saas-multitenant`  | Isolation tenant_id, RBAC org, invitations          |
 | `payment`           | Stripe, webhooks, idempotence                       |
+| `csv-import`        | Import CSV en masse, mapping colonnes, délimiteur, dédoublonnage, rapport d'erreurs |
 | `fastapi`      | API REST Python                          |
 | `typescript`   | Conventions TypeScript                   |
 | `nextjs`       | Frontend React/Next.js                   |

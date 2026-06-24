@@ -10,6 +10,8 @@ Lire `spec-final.md`, identifier le blueprint, charger les skills associés, cr�
 
 Lire `spec-final.md`. Si le fichier est absent, stopper et demander d'exécuter `/spec` d'abord.
 
+**Si `## Utilisateurs et rôles` contient au moins un rôle humain** (Utilisateur, Admin...) avec des FR-xxx associées, `screens-final.md` est **obligatoire** : le chercher dans le répertoire courant. S'il est absent, stopper et demander d'exécuter `/screens` d'abord — ne jamais construire le frontend sans ce contrat dès qu'un humain interagit avec l'application. Si tous les acteurs de la spec sont des systèmes externes (API pure, aucun rôle humain), `screens-final.md` n'est pas requis.
+
 ### Étape 2 — Identifier le blueprint
 
 `spec-final.md` ne propose jamais de nom de blueprint — ce choix est entièrement à la charge de `/implement`. Analyser les exigences fonctionnelles (FR-xxx) et choisir le blueprint le plus proche dans `.claude/architectures/` :
@@ -112,10 +114,9 @@ Créer l'arborescence de fichiers définie dans le blueprint. Créer les fichier
 - `frontend/package.json` — avec toutes les dépendances Next.js (ne pas laisser ce fichier à générer par l'utilisateur)
 - `frontend/public/.gitkeep` — Next.js attend ce répertoire ; sans lui, le build Docker échoue
 
-**Couverture frontend par FR-xxx** : classer chaque FR-xxx selon son acteur (cf `## Utilisateurs et rôles`) —
-- **Acteur = rôle humain** (Utilisateur, Admin...) : une route API testée ne suffit pas. Construire la page ou le composant frontend qui permet réellement de réaliser l'action (formulaire, bouton, sélecteur, page de liste...). Une FR-xxx de ce type sans aucun point d'entrée dans l'UI n'est **pas** considérée comme implémentée, même si le backend est prêt et testé.
-- **Acteur = système externe** (API tierce consommée, client externe type extension navigateur) : le backend seul suffit, aucune UI n'est attendue.
-- En cas de doute sur la classification d'une FR-xxx, l'implémenter avec son UI plutôt que de l'omettre — le coût d'une page superflue est bien plus faible que celui d'une fonctionnalité invisible pour l'utilisateur final.
+**Couverture frontend par FR-xxx** :
+- **Si `screens-final.md` existe** (obligatoire dès qu'un rôle humain est présent, voir étape 1) : c'est la source de vérité. Construire exactement les écrans qu'il décrit — mêmes routes, mêmes éléments clés par écran. Une route API testée ne suffit jamais : tant que l'écran correspondant n'existe pas dans le frontend, la FR-xxx qu'il couvre n'est **pas** considérée comme implémentée. Si un écran de `screens-final.md` s'avère impossible à construire tel que décrit, le signaler explicitement à l'utilisateur plutôt que de s'en écarter silencieusement.
+- **Si `screens-final.md` n'existe pas** (aucun rôle humain dans la spec — cas API pure) : aucune UI n'est attendue, le backend seul suffit.
 
 **Règle des deux niveaux de tests** (obligatoire pour atteindre 80% de couverture) :
 
@@ -247,6 +248,15 @@ Avant de terminer, vérifier :
 ### Étape 8 — Rapport de complétion
 
 **Avant de remplir le tableau, décomposer toute FR-xxx composée** : si le texte d'une FR-xxx énumère plusieurs cibles distinctes (plusieurs entités, plusieurs tables, "X, Y et Z"), la traiter comme autant de lignes à vérifier séparément dans le tableau ci-dessous — jamais comme une seule case à cocher globale. Une FR-xxx composée n'est Backend ✅ que si **chacune** de ses cibles a été vérifiée individuellement dans le code, pas seulement parce qu'un test associé à cette FR passe (un test peut n'avoir été écrit que pour le sous-ensemble déjà implémenté, et passer malgré tout — ce n'est pas une preuve de complétude, relire le code lui-même pour chaque cible).
+
+**Si `screens-final.md` existe, vérifier aussi sa conformité** : pour chaque écran qu'il décrit, confirmer que la route existe, que les éléments clés listés sont bien présents (pas seulement une page vide), et que les FR-xxx qu'il couvre y sont effectivement accessibles. Ajouter ce tableau au rapport :
+
+| Écran (screens-final.md) | Route | Construit | Conforme | Statut |
+|---|---|---|---|---|
+| Tableau de bord d'un objectif | `/objectifs/[id]` | ✅ | ✅ tous les éléments clés présents | Complet |
+| Import CSV entreprises | `/entreprises/import` | ❌ | — | **Incomplet** |
+
+Toute ligne **Incomplet** ou **non conforme** (route existe mais élément clé manquant) doit être signalée avec sa raison, au même titre que les FR-xxx incomplètes.
 
 Produire un tableau de couverture FR-xxx — sur le même principe que le rapport de `/spec` — et le présenter à l'utilisateur, pas seulement en cas de question :
 

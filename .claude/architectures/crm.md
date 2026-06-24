@@ -10,6 +10,7 @@ Gestion de contacts, suivi de pipeline commercial et historique d'activités. Ad
 - Modèles et accès base de données          ← skill associé : `sqlalchemy`
 - Validation des entrées et schémas         ← skill associé : `pydantic`
 - Frontend tableau de bord CRM              ← skill associé : `nextjs`
+- Import en masse de contacts/entreprises (si présent dans la spec) ← skill associé : `csv-import`
 - Tests API et E2E                          ← skill associé : `testing`
 
 ## Contraintes
