@@ -1,9 +1,15 @@
 ---
 name: nextjs
-description: Conventions Next.js 14+ App Router. Server vs Client components, data fetching, route handlers, variables d'environnement, gestion d'erreurs, layouts.
+description: Conventions Next.js 16+ App Router. Server vs Client components, data fetching, route handlers, variables d'environnement, gestion d'erreurs, layouts.
 ---
 
 # Conventions Next.js — App Router
+
+## Version
+
+`next>=16.2.6` — version minimale patchée suite à la publication coordonnée de sécurité de mai 2026 (13 advisories : DoS, contournement d'auth, SSRF, cache poisoning, XSS). Ne jamais pinner une version antérieure. Nécessite Node.js 20.9+ — vérifier que le `Dockerfile` du skill `docker` utilise une image `node:20`+ ou supérieure.
+
+Aucune incompatibilité avec un déploiement Vercel — Next.js 16 y est nativement supporté (Vercel est l'éditeur du framework), API de déploiement stable depuis la 16.2 pour les autres hébergeurs (Netlify, AWS...).
 
 ## Structure des dossiers
 
@@ -58,31 +64,46 @@ export function UserList({ users }: { users: User[] }) {
 
 ## Data Fetching — Server Components
 
+**`params` et `searchParams` sont des `Promise` depuis Next.js 15, et l'accès synchrone est totalement supprimé en 16** — toujours `await` avant utilisation.
+
 ```typescript
 // app/products/page.tsx
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; q?: string }
+  searchParams: Promise<{ page?: string; q?: string }>
 }) {
-  const page = Number(searchParams.page ?? 1)
-  const data = await fetchProducts({ page, q: searchParams.q })
+  const { page: pageParam, q } = await searchParams
+  const page = Number(pageParam ?? 1)
+  const data = await fetchProducts({ page, q })
 
   return <ProductGrid items={data.items} total={data.total} page={page} />
 }
 
-// Fetch avec cache control
+// app/dashboard/[id]/page.tsx — même règle pour params
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  // ...
+}
+```
+
+**Cache — modèle "opt-in" depuis Next.js 16** (Cache Components) : tout est dynamique (exécuté à chaque requête) par défaut ; la mise en cache passe par la directive explicite `"use cache"`, pas par une option implicite sur `fetch`.
+
+```typescript
+// lib/products.ts
 async function fetchProducts(params: ProductParams) {
+  "use cache"   // active le cache pour cette fonction — sans elle, exécution à chaque requête
+
   const url = new URL(`${process.env.API_URL}/products`)
   Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, String(v)))
 
-  const res = await fetch(url, {
-    next: { revalidate: 60 },   // revalider toutes les 60 secondes
-  })
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json() as Promise<PaginatedResponse<Product>>
 }
 ```
+
+`"use cache"` peut aussi être posé en tête de fichier (toutes les fonctions exportées sont cacheables) ou dans un composant Server. Combiner avec `cacheLife()`/`cacheTag()` (import `next/cache`) pour le TTL et l'invalidation ciblée plutôt que de revalider tout le cache.
 
 ## Route Handlers (API interne)
 

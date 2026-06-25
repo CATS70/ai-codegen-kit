@@ -115,7 +115,7 @@ Créer l'arborescence de fichiers définie dans le blueprint. Créer les fichier
 - `frontend/public/.gitkeep` — Next.js attend ce répertoire ; sans lui, le build Docker échoue
 
 **Couverture frontend par FR-xxx** :
-- **Si `screens-final.md` existe** (obligatoire dès qu'un rôle humain est présent, voir étape 1) : c'est la source de vérité. Construire exactement les écrans qu'il décrit — mêmes routes, mêmes éléments clés par écran. Une route API testée ne suffit jamais : tant que l'écran correspondant n'existe pas dans le frontend, la FR-xxx qu'il couvre n'est **pas** considérée comme implémentée. Si un écran de `screens-final.md` s'avère impossible à construire tel que décrit, le signaler explicitement à l'utilisateur plutôt que de s'en écarter silencieusement.
+- **Si `screens-final.md` existe** (obligatoire dès qu'un rôle humain est présent, voir étape 1) : c'est la source de vérité. Construire d'abord le(s) layout(s) qu'il décrit (`app/layout.tsx` et layouts imbriqués — header, navigation avec visibilité par rôle, footer), puis exactement les écrans qu'il décrit — mêmes routes, mêmes éléments clés par écran, rattachés au layout indiqué. Une route API testée ne suffit jamais : tant que l'écran correspondant n'existe pas dans le frontend, la FR-xxx qu'il couvre n'est **pas** considérée comme implémentée. Si un écran ou le layout de `screens-final.md` s'avère impossible à construire tel que décrit, le signaler explicitement à l'utilisateur plutôt que de s'en écarter silencieusement.
 - **Si `screens-final.md` n'existe pas** (aucun rôle humain dans la spec — cas API pure) : aucune UI n'est attendue, le backend seul suffit.
 
 **Règle des deux niveaux de tests** (obligatoire pour atteindre 80% de couverture) :
