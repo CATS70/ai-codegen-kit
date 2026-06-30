@@ -37,6 +37,110 @@ lib/
 └── utils.ts
 ```
 
+## CSS — CSS Modules
+
+Approche par défaut : **CSS Modules** (`.module.css`). Natif Next.js, zéro dépendance, scoping automatique des classes (pas de collision entre composants).
+
+### Conventions
+
+- Fichier CSS co-localisé avec le composant : `Button.module.css` à côté de `Button.tsx`
+- Noms de classes en **camelCase** (accessibles comme propriété JS : `styles.primaryButton`, pas `styles["primary-button"]`)
+- Styles globaux (reset, variables CSS, fonts) uniquement dans `app/globals.css`, importé une seule fois dans `app/layout.tsx`
+
+```
+components/
+├── ui/
+│   ├── Button.tsx
+│   └── Button.module.css     # co-localisé
+└── features/
+    ├── UserCard.tsx
+    └── UserCard.module.css
+app/
+└── globals.css               # reset + variables CSS globales
+```
+
+### Usage
+
+```typescript
+// components/ui/Button.tsx
+import styles from "./Button.module.css"
+
+type Props = Readonly<{ label: string; variant?: "primary" | "secondary" }>
+
+export function Button({ label, variant = "primary" }: Props) {
+  return (
+    <button className={styles[variant]}>
+      {label}
+    </button>
+  )
+}
+```
+
+```css
+/* Button.module.css */
+.primary {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+```
+
+### Combiner plusieurs classes
+
+```typescript
+// Plusieurs classes sur un même élément — template literal ou tableau
+<div className={`${styles.card} ${styles.highlighted}`}>...</div>
+
+// Avec une classe conditionnelle
+<div className={`${styles.card} ${isActive ? styles.active : ""}`}>...</div>
+```
+
+### Variables CSS globales
+
+Déclarer les tokens de design (couleurs, espacements, typographie) dans `globals.css` — réutilisables dans tous les modules sans import.
+
+```css
+/* app/globals.css */
+:root {
+  --color-primary: #0070f3;
+  --color-text: #111;
+  --font-sans: system-ui, sans-serif;
+  --radius-md: 6px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+```
+
+### Anti-patterns CSS
+
+```typescript
+// ❌ — styles inline (pas de réutilisation, pas de media queries)
+<div style={{ color: "red", padding: "16px" }}>...</div>
+
+// ❌ — classes globales sans module (collisions garanties à l'échelle)
+<div className="card">...</div>  // sans CSS Module
+
+// ✅ — classe de module + variable CSS
+<div className={styles.card}>...</div>
+```
+
 ## Server Components vs Client Components
 
 Par défaut : **Server Component** (pas de directive, pas d'interactivité).

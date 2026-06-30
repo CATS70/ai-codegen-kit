@@ -13,6 +13,7 @@ spec.md
   → /implement        identifie blueprint → charge skills → code (suit screens-final.md si présent)
   → hook lint         PostToolUse automatique → feedback si erreurs
   → /test             lance les tests
+  → /check-spec       vérifie la conformité du code à spec-final.md et screens-final.md (à la demande)
   → /security-audit   audit OWASP (à la demande)
 ```
 
@@ -32,6 +33,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `/test`           | Lance les tests du projet                         |
 | `/doc`            | Génère la documentation technique (API, README)   |
 | `/documentation`  | Produit une documentation orientée humains et/ou assistants IA |
+| `/check-spec`     | Vérifie la conformité du code à spec-final.md et screens-final.md |
 | `/security-audit` | Audit OWASP sur le code produit                   |
 
 ---
