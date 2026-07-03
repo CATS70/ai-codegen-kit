@@ -4,7 +4,7 @@ Kit de génération de code assisté par IA, production-ready et réutilisable s
 
 ---
 
-> **V1 — base de travail.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
+> **V2 — orienté robustesse.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
 
 ## Contexte
 
@@ -35,7 +35,7 @@ Ce kit encode le contexte une fois — conventions, blueprints, contraintes de s
 │   ├── security-check.sh  # PreToolUse — bloque les secrets avant l'écriture
 │   └── lint.sh            # PostToolUse — lance ruff + bandit après chaque fichier
 ├── architectures/         # Blueprints métier : structure + skills à charger
-├── commands/              # Commandes /spec /implement /fix /add /test /doc /security-audit
+├── commands/              # Commandes /spec /screens /implement /fix /add /test /doc /documentation /check-spec /security-audit
 └── skills/                # Conventions techniques par domaine (FastAPI, SQLAlchemy, auth…)
 ```
 
@@ -72,9 +72,11 @@ claude
 **4. Exécuter le workflow**
 
 ```
-/spec            → 5 questions de clarification → génère spec-final.md
-/implement       → identifie le blueprint, charge les skills, code
+/spec            → clarification interactive et rigoureuse → génère spec-final.md
+/screens         → (si rôle humain présent) décrit les écrans → génère screens-final.md, validé par vous
+/implement       → identifie le blueprint, charge les skills, code (suit screens-final.md si présent)
 /test            → lance les tests
+/check-spec      → vérifie la conformité du code à spec-final.md et screens-final.md (à la demande)
 /security-audit  → audit OWASP (à la demande)
 ```
 
@@ -86,13 +88,15 @@ Les hooks lint et sécurité s'exécutent automatiquement lors de `/implement`. 
 
 | Commande          | Rôle                                                      |
 |-------------------|-----------------------------------------------------------|
-| `/spec`           | Clarifie la spec en 5 questions max → génère `spec-final.md` |
-| `/implement`      | Lit `spec-final.md`, identifie le blueprint, code         |
+| `/spec`           | Clarification interactive et rigoureuse → génère `spec-final.md` |
+| `/screens`        | Décrit les écrans de l'application (si rôle humain) → `screens-final.md`, validé par vous |
+| `/implement`      | Lit `spec-final.md` (et `screens-final.md` si présent), identifie le blueprint, code |
 | `/fix`            | Corrige un bug ciblé sans refactorer                      |
 | `/add`            | Ajoute une fonctionnalité en mode delta                   |
 | `/test`           | Lance les tests du projet                                 |
 | `/doc`            | Génère la documentation technique (API, README)           |
 | `/documentation`  | Produit une documentation orientée humains et/ou agents IA |
+| `/check-spec`     | Vérifie la conformité du code à `spec-final.md` et `screens-final.md` |
 | `/security-audit` | Audit OWASP sur le code produit                           |
 
 ---
