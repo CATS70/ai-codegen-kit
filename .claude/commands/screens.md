@@ -48,9 +48,16 @@ Un écran peut couvrir plusieurs FR-xxx (ex: une page "Objectifs" couvre la cré
 | Rôle(s) | Qui y a accès |
 | FR-xxx couvertes | Liste des identifiants |
 | Objectif | Une phrase |
-| Éléments clés | Formulaires, tableaux triables/filtrables (avec leurs colonnes), boutons d'action, modales... |
+| Éléments clés | Formulaires, tableaux, boutons d'action, modales... — pour un écran liste/tableau ou CRUD, voir le sous-format obligatoire ci-dessous |
 | Navigation | D'où on y arrive, vers où on peut aller depuis cet écran |
 | États particuliers | Vide / chargement / erreur, uniquement si un AC-xxx ou EC-xxx de la spec l'exige explicitement — sinon "standard" |
+
+**Sous-format obligatoire pour tout écran liste/tableau ou CRUD** — un oubli ici (bouton manquant, colonne non précisée) n'est visible qu'une fois le frontend codé, donc jamais laissé implicite :
+
+| Sous-champ | Contenu |
+|---|---|
+| Actions CRUD | Pour chaque action présente (Ajouter / Modifier / Supprimer / Dupliquer...) : où elle se trouve (bouton en tête de liste, icône par ligne, menu contextuel...) et ce qu'elle déclenche (modale, page dédiée, confirmation avant suppression) — et explicitement lesquelles sont **absentes** si l'entité n'est pas éditable/supprimable |
+| Colonnes | Pour chaque colonne du tableau : triable (oui/non), filtrable (oui/non), déplaçable/réordonnable (oui/non) |
 
 ### Étape 5 — Présenter pour validation
 
@@ -83,6 +90,8 @@ Une fois validé, écrire `screens-final.md` :
 - FR-xxx couvertes : FR-00X, FR-00Y
 - Objectif : ...
 - Éléments clés : ...
+  - (si liste/tableau ou CRUD) Actions CRUD : ...
+  - (si liste/tableau ou CRUD) Colonnes : Nom (triable, filtrable, non déplaçable), ...
 - Navigation : ...
 - États particuliers : ...
 
@@ -107,5 +116,6 @@ Rapporter à l'utilisateur :
 - Le layout général (header, navigation, footer) est toujours décrit explicitement, même s'il est unique et simple — jamais déduit silencieusement de l'arborescence Next.js
 - La visibilité des liens de navigation par rôle doit être cohérente avec `## Utilisateurs et rôles` de `spec-final.md`
 - Chaque écran référence au moins une FR-xxx ; chaque FR-xxx à acteur humain de `spec-final.md` doit apparaître dans au moins un écran
+- Pour tout écran liste/tableau ou CRUD, les actions CRUD présentes (et absentes) et le comportement de chaque colonne (triable/filtrable/déplaçable) sont toujours détaillés explicitement dans les Éléments clés — jamais laissés implicites derrière "boutons d'action" ou "tableau triable"
 - Ne jamais inclure les FR-xxx dont l'acteur est un système externe — ces FR-xxx n'ont pas d'écran par définition
 - `/implement` lit ce fichier s'il existe et construit le frontend (layout(s) inclus) en suivant exactement ce qui est décrit — voir la règle correspondante dans `implement.md`
