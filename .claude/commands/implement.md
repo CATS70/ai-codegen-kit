@@ -160,6 +160,8 @@ Avant d'écrire du code qui appelle une librairie, vérifier que l'API utilisée
 
 **Anti-pattern à éviter** : générer du code qui appelle une fonction dépréciée ou renommée. Si une incertitude existe sur l'API exacte d'une librairie, utiliser la fonction la plus basique et documenter l'incertitude en commentaire plutôt que d'inventer une signature.
 
+**Librairie non couverte par un skill** : la spec ou l'utilisateur peut demander une librairie qui n'est couverte par aucun skill chargé. Ne jamais improviser son usage par supposition — appliquer la règle générale ci-dessous (voir Règles).
+
 ### Étape 6 — Générer les fichiers de configuration
 
 **`pyproject.toml`** — agréger toutes les dépendances déclarées dans les sections `## Dépendances` de chaque skill chargé, plus les dépendances de base FastAPI :
@@ -275,3 +277,4 @@ Toute ligne **Incomplet** doit être signalée explicitement avec sa raison (oub
 - Si une décision technique n'est pas couverte par les skills, choisir la solution la plus simple
 - Signaler à l'utilisateur si une contrainte du blueprint ne peut pas être respectée
 - Une FR-xxx n'est complète que si son acteur humain peut réellement l'exécuter depuis l'interface — un backend testé sans UI correspondante reste une FR-xxx incomplète, à signaler dans le rapport de l'étape 8
+- Ne jamais supposer face à une inconnue technique (ex: librairie non couverte par un skill) : demander à l'utilisateur si le doute a un impact réel sur l'implémentation, et au besoin chercher l'information (documentation officielle, recherche internet) avant d'écrire le code — jamais deviner silencieusement
