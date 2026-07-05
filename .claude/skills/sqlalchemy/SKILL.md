@@ -232,6 +232,36 @@ Règles :
 - Ne jamais modifier une migration déjà appliquée en production
 - Chaque migration doit avoir un `downgrade` fonctionnel
 
+### Piège : ENUM PostgreSQL réutilisé sur plusieurs tables
+
+Quand un type `ENUM` est utilisé comme colonne sur plusieurs tables, `autogenerate` crée le type explicitement une fois puis le réutilise comme type de colonne dans les `create_table` suivants :
+
+```python
+def upgrade() -> None:
+    job_status_enum = postgresql.ENUM("pending", "running", "done", name="job_status_enum")
+    job_status_enum.create(bind=op.get_bind(), checkfirst=True)
+
+    op.create_table(
+        "jobs",
+        sa.Column("status", job_status_enum, nullable=False),
+        # ...
+    )
+    op.create_table(
+        "job_logs",
+        # ❌ create_type=True (défaut) → SQLAlchemy retente un CREATE TYPE au moment du create_table
+        # → conflit avec le type déjà créé ci-dessus, dans la même transaction
+        sa.Column("status", postgresql.ENUM("pending", "running", "done", name="job_status_enum"), nullable=False),
+    )
+```
+
+- `postgresql.ENUM` a `create_type=True` par défaut : chaque fois qu'il est utilisé comme type de colonne dans un `create_table`, SQLAlchemy émet aussi un `CREATE TYPE`
+- Si le type a déjà été créé explicitement (ou utilisé dans une table précédente), il faut `create_type=False` sur toutes les définitions suivantes du même type
+- La migration étant transactionnelle, un échec ici fait un rollback complet — pas de nettoyage manuel nécessaire, mais la migration reste bloquée tant que le fix n'est pas appliqué
+
+```python
+job_status_enum = postgresql.ENUM("pending", "running", "done", name="job_status_enum", create_type=False)
+```
+
 ## Fixtures de test — pattern NullPool
 
 En test, ne jamais réutiliser l'engine de production (pool incompatible avec asyncpg dans un contexte multi-test).
