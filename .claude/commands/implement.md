@@ -231,6 +231,7 @@ Ce fichier est nécessaire pour que SonarQube comptabilise la couverture des tes
 
 **Si le skill `nextjs` est chargé**, créer dans `frontend/` :
 - `package.json` — dépendances Next.js complètes (next, react, react-dom, typescript, tailwindcss…)
+- `eslint.config.mjs` — flat config (jamais `.eslintrc.json`, voir skill `nextjs`)
 - `pnpm-lock.yaml` ou demander à l'utilisateur de lancer `pnpm install` — documenter cette étape dans le README
 - `public/.gitkeep` — répertoire vide attendu par Next.js et le Dockerfile
 
@@ -251,6 +252,7 @@ Avant de terminer, vérifier :
 - [ ] Chaque NFR-xxx Contrainte externe non couvrable par les skills a été signalée à l'utilisateur
 - [ ] `entrypoint.sh` créé si SQLAlchemy est chargé (migrations avant démarrage)
 - [ ] `frontend/package.json` créé si nextjs est chargé
+- [ ] `frontend/eslint.config.mjs` créé si nextjs est chargé (jamais `.eslintrc.json`)
 - [ ] `frontend/public/.gitkeep` créé si nextjs est chargé
 - [ ] `sonar-project.properties` créé avec `sonar.python.coverage.reportPaths=backend/coverage.xml`
 - [ ] Si nextjs est chargé : chaque FR-xxx dont l'acteur est un rôle humain a un point d'entrée fonctionnel dans le frontend (pas seulement une route API testée)

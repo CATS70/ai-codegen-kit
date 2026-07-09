@@ -11,6 +11,20 @@ description: Conventions Next.js 16+ App Router. Server vs Client components, da
 
 Aucune incompatibilité avec un déploiement Vercel — Next.js 16 y est nativement supporté (Vercel est l'éditeur du framework), API de déploiement stable depuis la 16.2 pour les autres hébergeurs (Netlify, AWS...).
 
+## ESLint — flat config obligatoire (ESLint 9+)
+
+Depuis ESLint 9, le format legacy `.eslintrc.json` n'est plus reconnu par défaut — seuls `eslint.config.js`/`.mjs`/`.ts` (flat config) sont cherchés. Ne jamais générer un `package.json` qui pin `eslint>=9` avec un `.eslintrc.json` : résultat systématique, "couldn't find an eslint.config file".
+
+Générer `eslint.config.mjs` à la racine du frontend :
+
+```js
+import nextConfig from "eslint-config-next";
+
+export default nextConfig;
+```
+
+Les versions récentes de `eslint-config-next` (≥15) exportent déjà un flat config — ne pas ajouter de couche de compatibilité (`FlatCompat`/`@eslint/eslintrc`) sauf si la version installée est antérieure et exporte encore l'ancien format ; vérifier la version réellement pinnée dans `package.json` avant d'en décider.
+
 ## Structure des dossiers
 
 ```
@@ -421,6 +435,25 @@ const url = process.env.API_URL   // undefined côté client sans NEXT_PUBLIC_
 export default async function Page() {
   const users = await api.users.list()
   return <UserList users={users} />
+}
+```
+
+**setState dans un `useEffect` pour réagir à un changement d'état** (`react-hooks/set-state-in-effect`) — un effet qui ne fait que dériver un state à partir d'un autre state (ex: réinitialiser la pagination quand un filtre ou un tri change) doit être remplacé par un appel direct dans le gestionnaire d'événement à l'origine du changement. L'effet introduit un re-render inutile et retarde la mise à jour d'un tick.
+
+```typescript
+// ❌ réagit à un changement de filtre via un effet séparé
+useEffect(() => { setPage(1) }, [sortBy, sortOrder])
+
+function handleSort(field: string, order: "asc" | "desc") {
+  setSortBy(field)
+  setSortOrder(order)
+}
+
+// ✅ réinitialise directement dans le gestionnaire qui déclenche le changement
+function handleSort(field: string, order: "asc" | "desc") {
+  setSortBy(field)
+  setSortOrder(order)
+  setPage(1)
 }
 ```
 
