@@ -32,7 +32,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `/add`            | Ajoute une fonctionnalité en mode delta           |
 | `/test`           | Lance les tests du projet                         |
 | `/doc`            | Génère la documentation technique (API, README)   |
-| `/documentation`  | Produit une documentation orientée humains et/ou assistants IA |
+| `/documentation`  | Génère CODEBASE.md, FILE_LINKS.md (cartographie des liens entre fichiers) et README.md |
 | `/check-spec`     | Vérifie la conformité du code à spec-final.md et screens-final.md |
 | `/security-audit` | Audit OWASP sur le code produit                   |
 
@@ -123,6 +123,6 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 - Décisions d'architecture → commit message ou `spec-final.md`
 
 **Avant de modifier du code existant**
-1. Chercher tous les usages
+1. Chercher tous les usages — si `FILE_LINKS.md` existe (généré par `/documentation`), le consulter en premier : il révèle les liens indirects (route ↔ frontend, composant partagé, table partagée) qu'un grep peut manquer
 2. Identifier les impacts
 3. Signaler avant de procéder
