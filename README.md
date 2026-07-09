@@ -95,7 +95,7 @@ Les hooks lint et sécurité s'exécutent automatiquement lors de `/implement`. 
 | `/add`            | Ajoute une fonctionnalité en mode delta                   |
 | `/test`           | Lance les tests du projet                                 |
 | `/doc`            | Génère la documentation technique (API, README)           |
-| `/documentation`  | Produit une documentation orientée humains et/ou agents IA |
+| `/documentation`  | Génère `CODEBASE.md`, `FILE_LINKS.md` (cartographie des liens entre fichiers) et `README.md` |
 | `/check-spec`     | Vérifie la conformité du code à `spec-final.md` et `screens-final.md` |
 | `/security-audit` | Audit OWASP sur le code produit                           |
 
