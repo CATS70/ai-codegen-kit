@@ -4,7 +4,7 @@ Kit de génération de code assisté par IA, production-ready et réutilisable s
 
 ---
 
-> **V2 — orienté robustesse.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
+> **v2.0.3 — orienté robustesse.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
 
 ## Contexte
 
