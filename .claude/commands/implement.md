@@ -12,6 +12,14 @@ Lire `spec-final.md`. Si le fichier est absent, stopper et demander d'exécuter 
 
 **Si `## Utilisateurs et rôles` contient au moins un rôle humain** (Utilisateur, Admin...) avec des FR-xxx associées, `screens-final.md` est **obligatoire** : le chercher dans le répertoire courant. S'il est absent, stopper et demander d'exécuter `/screens` d'abord — ne jamais construire le frontend sans ce contrat dès qu'un humain interagit avec l'application. Si tous les acteurs de la spec sont des systèmes externes (API pure, aucun rôle humain), `screens-final.md` n'est pas requis.
 
+### Étape 1b — Vérifier la cohérence transversale des entités
+
+Avant d'identifier le blueprint, croiser les exigences qui portent sur une même entité métier :
+
+1. Pour chaque entité listée dans `## Entités métier`, relever tous les FR-xxx qui la manipulent (création, import, export, recherche, rapport, API publique...).
+2. Vérifier que les champs de l'entité sont traités de façon cohérente par ces FR-xxx. Un champ défini dans un FR de création mais absent du mapping d'un FR d'import/export n'est pas forcément une erreur — `spec-final.md` peut l'exclure volontairement — mais toute incohérence apparente doit être signalée à l'utilisateur avant de coder, jamais résolue par supposition silencieuse (cohérent avec la règle de fin de fichier sur les inconnues techniques).
+3. Si une incohérence est trouvée, la lister dans un message avant de poursuivre. Ne bloquer l'implémentation que si l'ambiguïté empêche réellement de choisir une structure de données ; sinon, avancer avec l'interprétation la plus cohérente et la mentionner dans le rapport de l'étape 8.
+
 ### Étape 2 — Identifier le blueprint
 
 `spec-final.md` ne propose jamais de nom de blueprint — ce choix est entièrement à la charge de `/implement`. Analyser les exigences fonctionnelles (FR-xxx) et choisir le blueprint le plus proche dans `.claude/architectures/` :
@@ -278,3 +286,4 @@ Toute ligne **Incomplet** doit être signalée explicitement avec sa raison (oub
 - Signaler à l'utilisateur si une contrainte du blueprint ne peut pas être respectée
 - Une FR-xxx n'est complète que si son acteur humain peut réellement l'exécuter depuis l'interface — un backend testé sans UI correspondante reste une FR-xxx incomplète, à signaler dans le rapport de l'étape 8
 - Ne jamais supposer face à une inconnue technique (ex: librairie non couverte par un skill) : demander à l'utilisateur si le doute a un impact réel sur l'implémentation, et au besoin chercher l'information (documentation officielle, recherche internet) avant d'écrire le code — jamais deviner silencieusement
+- Une entité manipulée par plusieurs FR-xxx (création, import, export, recherche, rapport...) doit être traitée de façon cohérente entre ces FR-xxx ; toute incohérence de champs entre elles est signalée à l'utilisateur, jamais tranchée silencieusement (voir étape 1b)
