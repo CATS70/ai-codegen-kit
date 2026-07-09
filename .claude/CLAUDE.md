@@ -82,6 +82,8 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `fastapi`      | API REST Python                          |
 | `typescript`   | Conventions TypeScript                   |
 | `nextjs`       | Frontend React/Next.js                   |
+| `chrome-extension` | Extension Chrome Manifest V3 (service worker, permissions, CSP, Web Store) |
+| `firefox-extension` | Extension Firefox WebExtensions (event pages, browser.*, AMO)        |
 | `testing`      | pytest + Playwright                      |
 | `langgraph`    | Agents ReAct, checkpoints                |
 | `mcp`          | Serveur FastMCP + client                 |
