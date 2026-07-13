@@ -4,7 +4,7 @@ Kit de génération de code assisté par IA, production-ready et réutilisable s
 
 ---
 
-> **v2.0.3 — orienté robustesse.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
+> **v2.2.0 — orienté robustesse.** Testé sur des projets Python/FastAPI. La couverture TypeScript est partielle. Les contributions et adaptations sont bienvenues.
 
 ## Contexte
 
@@ -35,7 +35,7 @@ Ce kit encode le contexte une fois — conventions, blueprints, contraintes de s
 │   ├── security-check.sh  # PreToolUse — bloque les secrets avant l'écriture
 │   └── lint.sh            # PostToolUse — lance ruff + bandit après chaque fichier
 ├── architectures/         # Blueprints métier : structure + skills à charger
-├── commands/              # Commandes /spec /screens /implement /fix /add /test /doc /documentation /check-spec /security-audit
+├── commands/              # Commandes /spec /screens /implement /fix /add /test /eval-tests /doc /documentation /check-spec /security-audit
 └── skills/                # Conventions techniques par domaine (FastAPI, SQLAlchemy, auth…)
 ```
 
@@ -76,6 +76,7 @@ claude
 /screens         → (si rôle humain présent) décrit les écrans → génère screens-final.md, validé par vous
 /implement       → identifie le blueprint, charge les skills, code (suit screens-final.md si présent)
 /test            → lance les tests
+/eval-tests      → évalue la qualité des tests (couverture, mutation testing, cas limites — à la demande)
 /check-spec      → vérifie la conformité du code à spec-final.md et screens-final.md (à la demande)
 /security-audit  → audit OWASP (à la demande)
 ```
@@ -94,6 +95,7 @@ Les hooks lint et sécurité s'exécutent automatiquement lors de `/implement`. 
 | `/fix`            | Corrige un bug ciblé sans refactorer                      |
 | `/add`            | Ajoute une fonctionnalité en mode delta                   |
 | `/test`           | Lance les tests du projet                                 |
+| `/eval-tests`     | Évalue la qualité des tests (couverture lignes/branches, mutation testing, cas limites, maintenabilité) |
 | `/doc`            | Génère la documentation technique (API, README)           |
 | `/documentation`  | Génère `CODEBASE.md`, `FILE_LINKS.md` (cartographie des liens entre fichiers) et `README.md` |
 | `/check-spec`     | Vérifie la conformité du code à `spec-final.md` et `screens-final.md` |

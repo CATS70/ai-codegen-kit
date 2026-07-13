@@ -63,7 +63,7 @@ pnpm playwright test
 
 **Si tous les tests passent :**
 - Afficher le résumé (nb tests, couverture si disponible)
-- Signaler si la couverture est sous 80 %
+- Signaler si la couverture est sous 85 %
 
 **Si des tests échouent :**
 - Afficher les tests échoués avec leur message d'erreur
@@ -79,7 +79,7 @@ pnpm playwright test
 
 ```
 Tests Python   : X passed, Y failed, Z skipped
-Couverture     : XX% (seuil : 80%)
+Couverture     : XX% (seuil : 85%)
 Tests frontend : X passed, Y failed
 Tests E2E      : X passed, Y failed
 
@@ -92,5 +92,5 @@ Tests E2E      : X passed, Y failed
 - Ne jamais `skip` un test sans commentaire expliquant pourquoi
 - Si un test échoue à cause d'une variable d'environnement manquante, signaler la variable manquante
 - **Ne jamais lancer pytest sans venv** — utiliser `uv run pytest` ou le chemin explicite du venv
-- Si la couverture est sous 80 % : identifier les branches non couvertes et les tester directement (via la fixture `db`), pas via des tests HTTP (voir skill `testing` — section "Coverage et ASGI")
+- Si la couverture est sous 85 % : identifier les branches non couvertes et les tester directement (via la fixture `db`), pas via des tests HTTP (voir skill `testing` — section "Coverage et ASGI")
 - Une couverture sous 100 % n'est pas un problème en soi — signaler les branches non couvertes pour information, pas comme un échec. Les branches qui ne peuvent pas être atteintes via ASGI sont documentées dans le skill `testing`

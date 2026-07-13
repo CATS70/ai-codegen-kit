@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Conventions de test pour stack Python/TypeScript. pytest async pour FastAPI, fixtures, mocking, couverture 80%, Playwright pour E2E.
+description: Conventions de test pour stack Python/TypeScript. pytest async pour FastAPI, fixtures, mocking, couverture 85%, Playwright pour E2E.
 ---
 
 # Conventions de test
@@ -26,7 +26,7 @@ Un fichier de test par fichier de route. Les tests miroir la structure `api/`.
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80"
+addopts = "--cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=85"
 ```
 
 Le `--cov-report=xml` génère `coverage.xml` nécessaire pour que SonarQube comptabilise la couverture (`sonar.python.coverage.reportPaths=coverage.xml`).
@@ -222,13 +222,13 @@ async def test_payment_stripe_error(client: AsyncClient, auth_headers: dict):
 
 ## Couverture — règles
 
-- **Minimum 80%** de couverture sur `app/`
+- **Minimum 85%** de couverture sur `app/`
 - Priorité : services/ > api/ > models/
 - Ne pas chasser le % avec des tests vides — tester le comportement
 
 ```bash
 pytest --cov=app --cov-report=html   # rapport HTML
-pytest --cov=app --cov-fail-under=80 # CI gate
+pytest --cov=app --cov-fail-under=85 # CI gate
 ```
 
 ## Playwright — tests E2E

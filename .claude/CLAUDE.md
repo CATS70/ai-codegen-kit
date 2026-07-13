@@ -13,6 +13,7 @@ spec.md
   → /implement        identifie blueprint → charge skills → code (suit screens-final.md si présent)
   → hook lint         PostToolUse automatique → feedback si erreurs
   → /test             lance les tests
+  → /eval-tests        évalue la qualité des tests (couverture, mutation testing, cas limites — à la demande)
   → /check-spec       vérifie la conformité du code à spec-final.md et screens-final.md (à la demande)
   → /security-audit   audit OWASP (à la demande)
 ```
@@ -31,6 +32,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `/fix`            | Corrige un bug ciblé sans refactorer              |
 | `/add`            | Ajoute une fonctionnalité en mode delta           |
 | `/test`           | Lance les tests du projet                         |
+| `/eval-tests`     | Évalue la qualité des tests (couverture lignes/branches, mutation testing, cas limites, maintenabilité) |
 | `/doc`            | Génère la documentation technique (API, README)   |
 | `/documentation`  | Génère CODEBASE.md, FILE_LINKS.md (cartographie des liens entre fichiers) et README.md |
 | `/check-spec`     | Vérifie la conformité du code à spec-final.md et screens-final.md |

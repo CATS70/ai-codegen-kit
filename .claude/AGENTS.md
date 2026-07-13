@@ -74,7 +74,7 @@ Ces règles s'appliquent à tout agent, pour tout projet.
 - Stack traces absentes des réponses d'erreur
 
 ### Tests
-- Couverture minimum 80%
+- Couverture minimum 85%
 - Chaque test est isolé (rollback DB après chaque test)
 - Les services sont testables sans dépendance externe (injection)
 
