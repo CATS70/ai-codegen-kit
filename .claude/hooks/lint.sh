@@ -2,6 +2,11 @@
 # PostToolUse — lancé après chaque Write ou Edit
 # Lit le JSON de l'outil via stdin, extrait le chemin du fichier, lance le linter approprié
 # La sortie est affichée à Claude pour correction immédiate
+#
+# Python : auto-fix appliqué en place (ruff check --fix + ruff format) avant le rapport final —
+# évite de faire réécrire par l'agent des violations mécaniques (ligne trop longue, imports mal
+# triés) que l'outil sait déjà corriger seul. Seules les violations réellement irréductibles
+# (chaîne trop longue, import trop profond, findings sécurité) remontent à l'agent pour correction.
 
 set -euo pipefail
 
@@ -38,21 +43,22 @@ ERRORS=0
 if [[ "$FILE_PATH" == *.py ]]; then
 
   if command -v ruff &>/dev/null; then
-    echo "→ ruff check $FILE_PATH"
+    # Auto-fix en place — safe fixes uniquement (jamais --unsafe-fixes, qui peut changer le
+    # comportement du code). Ordre recommandé par ruff : check --fix puis format.
+    echo "→ ruff check --fix $FILE_PATH"
+    ruff check "$FILE_PATH" --fix --output-format=concise 2>&1 || true
+    log "ruff check --fix: appliqué"
+
+    echo "→ ruff format $FILE_PATH"
+    ruff format "$FILE_PATH" 2>&1 || true
+    log "ruff format: appliqué"
+
+    echo "→ ruff check $FILE_PATH (résiduel — ce qui n'a pas pu être auto-corrigé)"
     if ! ruff check "$FILE_PATH" --output-format=concise 2>&1; then
       ERRORS=1
-      log "ruff check: ERREUR"
+      log "ruff check résiduel: ERREUR"
     else
-      log "ruff check: OK"
-    fi
-
-    echo "→ ruff format --check $FILE_PATH"
-    if ! ruff format --check "$FILE_PATH" 2>&1; then
-      echo "  (pour corriger : ruff format $FILE_PATH)"
-      ERRORS=1
-      log "ruff format: ERREUR"
-    else
-      log "ruff format: OK"
+      log "ruff check résiduel: OK"
     fi
   else
     echo "ℹ ruff non installé — linting Python ignoré (pip install ruff)"
