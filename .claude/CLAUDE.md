@@ -119,7 +119,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 **Code**
 - Implémenter uniquement ce qui est demandé
 - Un fichier = une responsabilité
-- Gestion des erreurs explicite à chaque frontière externe
+- Toute opération pouvant échouer (I/O, appel réseau, service tiers, traitement de fond) est interceptée et son échec est rendu **visible à l'utilisateur concerné** — jamais seulement loggé ou stocké de façon passive/consultable sur demande. Synchrone : erreur explicite dans la réponse (code HTTP + message). Asynchrone/arrière-plan : signal actif obligatoire (notification, badge non-neutre) — un statut neutre ne doit jamais masquer un échec total ou partiel
 
 **Documentation**
 - Fonctions et classes : docstring décrivant ce que ça fait, les paramètres clés et le retour

@@ -50,7 +50,7 @@ Un écran peut couvrir plusieurs FR-xxx (ex: une page "Objectifs" couvre la cré
 | Objectif | Une phrase |
 | Éléments clés | Formulaires, tableaux, boutons d'action, modales... — pour un écran liste/tableau ou CRUD, voir le sous-format obligatoire ci-dessous |
 | Navigation | D'où on y arrive, vers où on peut aller depuis cet écran |
-| États particuliers | Vide / chargement / erreur, uniquement si un AC-xxx ou EC-xxx de la spec l'exige explicitement — sinon "standard" |
+| États particuliers | Vide / chargement / erreur, requis si un AC-xxx ou EC-xxx de la spec l'exige explicitement — sinon "standard". **Exception qui ne peut jamais être "standard"** : si l'écran affiche ou pilote une entité à statut (job, import, traitement asynchrone/arrière-plan), l'état d'échec (total ou partiel) est toujours un état particulier obligatoire, avec un traitement visuel qui le distingue clairement d'un succès — jamais un badge de statut neutre indifférencié (voir `## Conventions transversales` de `CLAUDE.md`) |
 
 **Sous-format obligatoire pour tout écran liste/tableau ou CRUD** — un oubli ici (bouton manquant, colonne non précisée) n'est visible qu'une fois le frontend codé, donc jamais laissé implicite :
 
