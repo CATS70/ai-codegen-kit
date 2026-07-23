@@ -20,12 +20,15 @@ spec.md
 
 Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.md`. Si `spec-final.md` contient au moins un rôle humain, `/implement` exige aussi `screens-final.md` (généré par `/screens`).
 
+**Codebase existant sans cette base** (legacy, reçu sans documentation, ou doc obsolète) : lancer `/retro-doc` avant tout le reste — il compare la doc existante au code réel, la met à jour, et génère un brouillon de `spec-final.md`/`screens-final.md` à valider avant de reprendre la chaîne normale.
+
 ---
 
 ## Commandes
 
 | Commande          | Rôle                                              |
 |-------------------|---------------------------------------------------|
+| `/retro-doc`      | Rétro-documente un codebase existant : compare doc ↔ code, met à jour l'obsolète, génère ce qui manque (spec-final.md et screens-final.md en brouillon à valider inclus) |
 | `/spec`           | Clarification interactive et rigoureuse → spec-final.md |
 | `/screens`        | Décrit les écrans de l'application (si rôle humain) → screens-final.md, validé par l'utilisateur |
 | `/implement`      | Lit spec-final.md (et screens-final.md si présent), identifie blueprint, code |
