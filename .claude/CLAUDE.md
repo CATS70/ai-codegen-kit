@@ -91,7 +91,8 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 | `firefox-extension` | Extension Firefox WebExtensions (event pages, browser.*, AMO)        |
 | `testing`      | pytest + Playwright                      |
 | `langgraph`    | Agents ReAct, checkpoints                |
-| `mcp`          | Serveur FastMCP + client                 |
+| `mcp`          | Serveur MCP via framework tiers fastmcp (composition, proxying, OpenAPI) — défaut du kit |
+| `mcp-sdk-2.0`  | Serveur MCP via SDK officiel Anthropic (MCPServer, contrôle protocole bas niveau) — alternative à `mcp` |
 | `llm-router`   | Pattern adaptateur provider-agnostique (interface commune, swap via env var) |
 | `litellm`      | Abstraction LLM multi-provider clé en main (Anthropic, OpenAI, Mistral…) |
 | `claude-api`   | Appels Anthropic, streaming              |
