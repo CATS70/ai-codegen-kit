@@ -1,14 +1,16 @@
 ---
 name: mcp
-description: Conventions FastMCP pour serveurs MCP Python. Définition d'outils, ressources, auth, exposition d'APIs FastAPI via MCP, client Claude Code.
+description: Conventions FastMCP (framework tiers PrefectHQ, gofastmcp.com) pour serveurs MCP Python — composition, proxying, génération OpenAPI. Définition d'outils, ressources, auth, exposition d'APIs FastAPI via MCP, client Claude Code. Pour le SDK officiel Anthropic (contrôle protocole bas niveau), voir le skill mcp-sdk-2.0.
 ---
 
 # Conventions MCP — FastMCP
 
+> **Note** : `fastmcp` est un framework tiers (PrefectHQ/Jeremiah Lowin, gofastmcp.com), distinct du SDK officiel Anthropic (`mcp` sur PyPI). C'est le choix par défaut de ce kit pour sa productivité (moins de code, composition, proxying, génération d'outils depuis OpenAPI). Pour un contrôle bas niveau du protocole ou pour rester strictement sur l'outillage Anthropic, utiliser le skill `mcp-sdk-2.0`.
+
 ## Installation
 
 ```toml
-fastmcp = "^2.0"
+fastmcp = "^3.0"
 ```
 
 ## Serveur MCP minimal
@@ -118,7 +120,9 @@ async def delete_user(user_id: int, confirm: bool = False) -> dict:
 # mcp_server.py
 if __name__ == "__main__":
     mcp.run(transport="stdio")   # pour Claude Code (stdio)
-    # ou mcp.run(transport="sse", port=8001)  # pour accès réseau
+    # ou mcp.run(transport="sse")  # pour accès réseau — port via FASTMCP_PORT (env), défaut 8000
+    # NB : depuis fastmcp 3.0, port n'est plus un kwarg de run(). Pour fixer le port en code
+    # plutôt qu'en env, utiliser mcp.run_http_async(transport="sse", port=8000).
 ```
 
 ## Configuration dans Claude Code

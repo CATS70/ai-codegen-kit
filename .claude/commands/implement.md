@@ -62,6 +62,10 @@ Charger ensuite les skills du blueprint dans cet ordre :
    - Plusieurs providers possibles ou non précisé → `litellm` (abstraction multi-provider)
    - Agent avec graph d'état → `langgraph` + skill provider choisi ci-dessus
    - Ne jamais charger `llm-router` ET `litellm` ensemble — choisir l'un ou l'autre
+   - Composant serveur MCP identifié dans la spec → règle de sélection :
+     - `spec-final.md` précise explicitement le SDK/framework à utiliser (ex: "SDK officiel Anthropic", "fastmcp") → charger le skill correspondant (`mcp-sdk-2.0` ou `mcp`)
+     - Non précisé → **poser la question à l'utilisateur** avant de charger un skill par défaut ; ne jamais trancher silencieusement (cohérent avec la règle générale sur les inconnues techniques, voir Règles en fin de fichier)
+     - Ne jamais charger `mcp` ET `mcp-sdk-2.0` ensemble — choisir l'un ou l'autre
 5. Skills frontend (`nextjs`, `typescript`)
 6. Skills transverses (`testing`, `docker`, `git`)
 7. **Skills de charge — selon la NFR taguée "Charge" dans `## Exigences non-fonctionnelles` de `spec-final.md` :**
