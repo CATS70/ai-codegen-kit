@@ -194,6 +194,71 @@ const { theme } = await chrome.storage.local.get("theme")
 
 Vérifier la taille avant d'écrire dans `sync` (`getBytesInUse()`) — un dépassement de quota fait échouer silencieusement l'écriture (`runtime.lastError` ou rejet de promesse), pas d'exception synchrone.
 
+## Gestion des erreurs
+
+Trois contextes JS isolés (service worker, content scripts, popup/options) ne partagent ni pile d'appel ni destination de log visible pour l'utilisateur — une erreur dans le service worker n'apparaît que dans `chrome://extensions` → *Inspecter les vues* → console, que l'utilisateur n'ouvre jamais. Sans remontée explicite, l'échec est invisible.
+
+**Logger et persister — jamais seulement `console.error`**
+
+Le service worker MV3 peut être déchargé à tout moment ; un état en mémoire ne survit pas. Persister dans `chrome.storage.local`, lisible depuis n'importe quel contexte.
+
+```typescript
+// lib/errors.ts
+export async function reportError(error: unknown, context: Record<string, unknown> = {}): Promise<string> {
+  const errorId = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`
+  console.error(`[${errorId}]`, error, context)
+
+  const { errors = [] } = await chrome.storage.local.get("errors")
+  await chrome.storage.local.set({
+    errors: [...errors, { errorId, message: String((error as Error)?.message ?? error), context, at: Date.now() }].slice(-20),
+  })
+
+  // Signal actif non-neutre — jamais un badge neutre qui masque l'échec
+  chrome.action.setBadgeText({ text: "!" })
+  chrome.action.setBadgeBackgroundColor({ color: "#d93025" })
+
+  return errorId
+}
+```
+
+**Remontée au popup — un identifiant transmissible, pas juste "une erreur est survenue"**
+
+```typescript
+// popup.ts
+const { errors = [] } = await chrome.storage.local.get("errors")
+const last = errors.at(-1)
+if (last) {
+  errorBanner.textContent = `Une erreur est survenue (réf. ${last.errorId})`
+  copyButton.onclick = () => navigator.clipboard.writeText(JSON.stringify(last, null, 2))
+  chrome.action.setBadgeText({ text: "" })   // acquittée à l'ouverture du popup
+}
+```
+
+**`chrome.runtime.lastError` — jamais ignoré silencieusement**
+
+Les API à callback ne lèvent pas d'exception sur erreur — elles la posent dans `chrome.runtime.lastError`, silencieusement ignorée si on ne la vérifie pas.
+
+```typescript
+// ❌ — échec silencieux (ex: quota chrome.storage.sync dépassé)
+chrome.storage.sync.set({ key: value })
+
+// ✅ — vérifier systématiquement après tout appel à callback
+chrome.storage.sync.set({ key: value }, () => {
+  if (chrome.runtime.lastError) {
+    reportError(chrome.runtime.lastError, { api: "storage.sync.set" })
+  }
+})
+```
+
+**Rejets non gérés du service worker**
+
+```typescript
+// background/service-worker.ts — au niveau racine, une seule fois
+self.addEventListener("unhandledrejection", (event) => {
+  reportError(event.reason, { source: "service-worker-unhandledrejection" })
+})
+```
+
 ## Content Security Policy — pas de code distant
 
 MV3 impose `script-src 'self' 'wasm-unsafe-eval'; object-src 'self';` par défaut, **non modifiable pour ajouter `unsafe-eval` ou `unsafe-inline`**. Toute la logique JS doit être embarquée dans le bundle de l'extension.
@@ -249,3 +314,4 @@ Délai de revue variable (heures à plusieurs jours selon la charge de la file) 
 - `chrome.storage`, jamais `localStorage`/`sessionStorage` (indisponibles dans le service worker)
 - Aucun `eval`, `new Function`, ou script chargé depuis une URL distante
 - Valider/sanitizer tout message reçu d'un content script avant de l'utiliser côté service worker
+- Toute erreur (service worker, content script, callback avec `runtime.lastError`) est persistée (`chrome.storage.local`) et signalée par un badge non-neutre — jamais seulement `console.error`

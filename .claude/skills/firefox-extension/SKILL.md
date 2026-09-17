@@ -155,6 +155,31 @@ browser.runtime.lastError
 
 `browser.storage.local` (10 Mo, `unlimitedStorage` pour lever la limite) et `browser.storage.sync` (100 Ko total, 8 Ko/item, synchronisé via le compte Firefox Sync) suivent les mêmes règles que côté Chrome — voir le skill `chrome-extension` pour le détail des quotas et anti-patterns `localStorage`.
 
+## Gestion des erreurs
+
+Même trou que côté Chrome — service worker/event page, content scripts et popup sont trois contextes qui ne partagent aucune destination de log visible pour l'utilisateur. Voir skill `chrome-extension` pour le pattern complet (`reportError` : persistance dans `storage.local`, borné à 20 entrées, + badge non-neutre) — directement réutilisable ici en remplaçant `chrome.*` par `browser.*`. Seule différence : `browser.*` rejette une Promise au lieu de poser `runtime.lastError`, donc `try/catch` remplace la vérification post-callback.
+
+```typescript
+// ❌ — rejet de Promise non intercepté, invisible pour l'utilisateur
+browser.storage.sync.set({ key: value })
+
+// ✅ — try/catch systématique
+try {
+  await browser.storage.sync.set({ key: value })
+} catch (error) {
+  await reportError(error, { api: "storage.sync.set" })
+}
+```
+
+**Rejets non gérés de l'event page**
+
+```typescript
+// background/background.ts — au niveau racine, une seule fois
+self.addEventListener("unhandledrejection", (event) => {
+  reportError(event.reason, { source: "event-page-unhandledrejection" })
+})
+```
+
 ## Permissions — affichage à l'installation
 
 Depuis Firefox 127, les `host_permissions` s'affichent dans la boîte de dialogue d'installation et sont accordées directement à l'installation (pas de prompt runtime comme certaines permissions optionnelles). Garder `host_permissions` aussi restreint que possible réduit la friction d'installation autant que le risque de rejet en review AMO.
@@ -218,3 +243,4 @@ if (typeof browser.offscreen === "undefined") {
 - CSP sous `content_security_policy.extension_pages`, jamais `unsafe-eval`/`unsafe-inline`
 - `web-ext lint` avant chaque `web-ext sign` ou soumission AMO
 - Pas de dépréciation forcée MV2→MV3 côté Firefox seul — migrer par choix (parité Chrome, nouvelles API), pas par urgence
+- Toute erreur est persistée (`storage.local`) et signalée par un badge non-neutre — même pattern que `chrome-extension`, adapté aux Promises `browser.*`

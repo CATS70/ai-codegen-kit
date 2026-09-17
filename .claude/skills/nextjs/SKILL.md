@@ -266,6 +266,8 @@ export default config
 
 ## Gestion des erreurs
 
+Next.js strip volontairement le message et la stack des erreurs serveur en production (pour ne rien exposer au navigateur) et les remplace par `error.digest` — un hash conçu précisément pour faire correspondre le rapport utilisateur au log serveur. Ne jamais l'ignorer dans `error.tsx` : c'est le seul fil entre "l'utilisateur voit une erreur" et "on retrouve la bonne ligne de log".
+
 ```typescript
 // app/error.tsx — Error Boundary global (doit être Client Component)
 "use client"
@@ -274,12 +276,23 @@ export default function GlobalError({
   error,
   reset,
 }: {
-  error: Error
+  error: Error & { digest?: string }
   reset: () => void
 }) {
+  const reference = error.digest ?? "indisponible"
+
+  async function copyDetails() {
+    const details = `Erreur — ${new Date().toISOString()}\nRéférence : ${reference}\nPage : ${window.location.href}`
+    await navigator.clipboard.writeText(details).catch(() => {})
+  }
+
   return (
     <div>
       <h2>Une erreur est survenue</h2>
+      <p>
+        Référence à transmettre au support : <code>{reference}</code>
+      </p>
+      <button onClick={copyDetails}>Copier les détails</button>
       <button onClick={reset}>Réessayer</button>
     </div>
   )
@@ -365,11 +378,26 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new ApiError(res.status, error.detail ?? "Request failed")
+    // Le backend renvoie systématiquement une enveloppe RFC 9457 (skill fastapi) —
+    // un seul format à gérer côté frontend, request_id toujours présent.
+    const body = await res.json().catch(() => ({}))
+    const requestId = body.request_id ?? res.headers.get("X-Request-ID") ?? undefined
+    throw new ApiError(res.status, body.detail ?? "Request failed", requestId)
   }
 
   return res.json() as Promise<T>
+}
+
+// lib/errors.ts (ou co-localisé) — porte le request_id jusqu'au composant qui affiche l'erreur
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly requestId?: string,
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
 }
 
 export const api = {

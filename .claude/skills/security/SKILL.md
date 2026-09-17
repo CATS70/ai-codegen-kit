@@ -50,16 +50,57 @@ class Settings(BaseSettings):
 
 ## Gestion des erreurs
 
+Un message générique ("Internal server error") ne suffit pas : sans identifiant commun entre la réponse et le log serveur, l'utilisateur ne peut rapporter au support qu'une description vague, et l'équipe doit recouper les logs à l'aveugle — pire si l'architecture a plusieurs composants. Toute erreur inattendue doit porter un `request_id` unique par requête, présent à la fois dans la réponse et dans le log correspondant.
+
+**Corrélation requête ↔ logs — middleware `asgi-correlation-id`**
+
+Ne pas réimplémenter ce middleware à la main — utiliser la lib dédiée, dans le même esprit que `slowapi`/`secure` déjà recommandés dans ce skill.
+
+```toml
+# pyproject.toml
+asgi-correlation-id = "^4.3"
+```
+
+```python
+# main.py
+from asgi_correlation_id import CorrelationIdMiddleware
+
+app.add_middleware(CorrelationIdMiddleware)  # lit X-Request-ID ou en génère un, l'expose via correlation_id.get()
+```
+
+Suffisant pour un service unique. Si l'architecture appelle plusieurs services entre eux (au-delà d'un simple monolithe FastAPI + frontend), propager plutôt `traceparent` (W3C Trace Context, standard adopté par OpenTelemetry) pour que l'identifiant survive à la traversée de service — `X-Request-ID` seul s'arrête à la première frontière.
+
+**Format de réponse — RFC 9457 (Problem Details for HTTP APIs)**
+
 ```python
 # ❌ Expose la structure interne
 raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ Log complet côté serveur, message générique côté client
-logger.error("Database error", exc_info=e, extra={"user_id": user_id})
+# ❌ Générique mais rien à transmettre au support — cul-de-sac pour l'utilisateur comme pour l'équipe
 raise HTTPException(status_code=500, detail="Internal server error")
+
+# ✅ Log complet côté serveur + réponse structurée RFC 9457 avec le même request_id
+from asgi_correlation_id import correlation_id
+
+logger.error("Database error", exc_info=e, extra={"request_id": correlation_id.get()})
+return JSONResponse(
+    status_code=500,
+    media_type="application/problem+json",
+    headers={"X-Request-ID": correlation_id.get() or ""},
+    content={
+        "type": "about:blank",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "Une erreur inattendue est survenue.",
+        "request_id": correlation_id.get(),   # identique au log serveur — transmissible au support
+    },
+)
 ```
 
+Implémentation complète des handlers (global + exceptions typées) : voir skill `fastapi`.
+
 - Codes corrects : 401 non authentifié, 403 non autorisé, 404 non trouvé, 422 validation
+- L'utilisateur final voit ce `request_id` (skill `nextjs`) — jamais la stack trace
 
 ## CORS
 
@@ -73,7 +114,8 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,  # list depuis .env
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],  # sans expose_headers, le frontend ne peut pas lire l'ID de corrélation
 )
 ```
 
@@ -266,6 +308,7 @@ La validation par pattern est une couche de défense, pas une solution complète
 - [ ] Toutes les routes sensibles avec `Depends(get_current_user)`
 - [ ] CORS avec origines explicites
 - [ ] Stack traces absentes des réponses d'erreur
+- [ ] Réponses d'erreur incluent un `request_id` de corrélation, identique dans les logs serveur (`asgi-correlation-id`)
 - [ ] Fichiers uploadés validés, renommés, hors répertoire web
 - [ ] `pip audit` sans CVE critiques
 - [ ] Rate limiting sur les routes d'auth (login, register, reset-password)

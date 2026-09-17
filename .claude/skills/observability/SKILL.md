@@ -7,7 +7,9 @@ description: Observabilité pour FastAPI Python. Logging structuré avec masquag
 
 ## Quand charger ce skill
 
-Charger uniquement si le volume est **high** (>10k users simultanés). Pour medium/low, le logging structuré suffit.
+Charger uniquement si le volume est **high** (>10k users simultanés) — ce skill couvre la métrologie de charge (Prometheus, health checks), dont le coût (cardinalité des métriques, overhead de scrape) se justifie à cette échelle.
+
+La corrélation requête ↔ logs (`request_id`, format d'erreur RFC 9457) est couverte dans les skills `security` et `fastapi`, et s'applique **quel que soit le volume** — ce n'est pas un sujet d'observabilité à grande échelle, c'est un besoin de support dès le premier utilisateur. Le `setup_logging` ci-dessous suppose que `CorrelationIdMiddleware` (skill `security`) est déjà enregistré.
 
 ## Logging structuré
 
@@ -17,6 +19,8 @@ Configurer le logging une seule fois au démarrage. Masquer systématiquement le
 # core/logging.py
 import logging
 import sys
+
+from asgi_correlation_id import CorrelationIdFilter
 
 _SENSITIVE_FIELDS = {"password", "password_hash", "token", "secret", "card_number", "cvv"}
 
@@ -37,10 +41,11 @@ def setup_logging(debug: bool = False) -> None:
     level = logging.DEBUG if debug else logging.INFO
     handler = logging.StreamHandler(sys.stdout)
     handler.addFilter(SensitiveDataFilter())
+    handler.addFilter(CorrelationIdFilter(uuid_length=32, default_value="-"))
 
     logging.basicConfig(
         level=level,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        format="%(asctime)s %(levelname)s %(name)s [%(correlation_id)s] %(message)s",
         handlers=[handler],
     )
 

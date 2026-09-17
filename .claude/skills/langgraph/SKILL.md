@@ -20,6 +20,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from typing import TypedDict, Annotated
 import operator
 
@@ -41,18 +42,25 @@ async def call_model(state: AgentState) -> dict:
     response = await model_with_tools.ainvoke(state["messages"])
     return {"messages": [response], "iteration": state["iteration"] + 1}
 
-async def call_tools(state: AgentState) -> dict:
+async def call_tools(state: AgentState, config: RunnableConfig) -> dict:
+    thread_id = config["configurable"]["thread_id"]
     last_message = state["messages"][-1]
     # Appels parallèles — évite d'exécuter N outils en séquence quand ils sont indépendants
     tasks = [execute_tool(tc["name"], tc["args"]) for tc in last_message.tool_calls]
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-    results = [
-        ToolMessage(
-            content=str(r) if not isinstance(r, Exception) else f"Erreur : {r}",
-            tool_call_id=tc["id"],
-        )
-        for r, tc in zip(raw_results, last_message.tool_calls)
-    ]
+
+    results = []
+    for r, tc in zip(raw_results, last_message.tool_calls):
+        if isinstance(r, Exception):
+            # Ne jamais renvoyer l'exception brute au modèle (fuite de détail interne,
+            # rien d'exploitable si le modèle la répète à l'utilisateur) — logger avec
+            # un identifiant court, ne remonter que ça + un message clair.
+            error_id = log_error(r, thread_id=thread_id, tool=tc["name"])
+            content = f"Erreur lors de l'appel à {tc['name']} (réf. {error_id})."
+        else:
+            content = str(r)
+        results.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+
     return {"messages": results}
 
 # 4. Routing conditionnel
@@ -128,6 +136,37 @@ async def create_ticket(title: str, description: str, priority: str = "medium") 
 tools = [search_knowledge_base, create_ticket]
 ```
 
+## Gestion des erreurs
+
+```python
+# core/errors.py
+import logging
+import uuid
+
+logger = logging.getLogger(__name__)
+
+def log_error(exc: Exception, **context) -> str:
+    """Logge l'exception avec un error_id court, à reporter dans le message renvoyé au modèle/appelant."""
+    error_id = uuid.uuid4().hex[:8]
+    logger.error("Agent node error", exc_info=exc, extra={"error_id": error_id, **context})
+    return error_id
+```
+
+`thread_id` (déjà obligatoire pour le checkpointing) identifie la conversation entière ; `error_id` identifie l'instant précis de l'échec — les deux ensemble suffisent à retrouver n'importe quelle erreur dans les logs, quel que soit le nombre de nœuds traversés.
+
+**Nœud qui échoue hors du try/except d'un outil (`call_model`, LLM indisponible, etc.)**
+
+Si `agent.ainvoke(...)` est appelé depuis une route FastAPI, une exception non gérée y est interceptée par le handler global (skill `fastapi`), qui génère déjà son propre `request_id` — rien à faire de plus. Si l'agent tourne hors cycle de requête HTTP (worker de fond, file de tâches, exécution planifiée), ce filet n'existe pas : encapsuler l'appel et transformer l'échec en signal actif, jamais en log muet (règle transversale — voir `CLAUDE.md`).
+
+```python
+async def run_agent_job(agent, thread_id: str, user_message: str, user_id: int) -> None:
+    try:
+        await chat(agent, user_message, thread_id, user_id)
+    except Exception as e:
+        error_id = log_error(e, thread_id=thread_id)
+        await job_status_service.mark_failed(thread_id, error_id)   # statut jamais neutre
+```
+
 ## Human-in-the-Loop
 
 ```python
@@ -174,3 +213,4 @@ async def stream_agent(agent, user_message: str, thread_id: str) -> AsyncIterato
 - **SQLite uniquement pour dev/single-instance** — sur infra distribuée (plusieurs workers/pods), utiliser `AsyncPostgresSaver` (`langgraph-checkpoint-postgres`) : SQLite n'est pas partageable entre processus distincts et n'est pas recommandé par LangGraph pour la production
 - **Fenêtre de contexte** — surveiller la longueur de `messages` ; au-delà de ~40 échanges, résumer ou tronquer avec `trim_messages` (langchain_core) avant `call_model` pour éviter un dépassement de contexte
 - **Bug asyncio.gather + interrupt()** (déc. 2025, issue #6624) — les tool calls parallèles via `asyncio.gather` génèrent des IDs d'interruption identiques, cassant les workflows human-in-the-loop. Éviter les appels parallèles dans les graphes avec des `interrupt()` ; utiliser l'API `Send` pour le parallélisme contrôlé (map-reduce sur sous-graphes)
+- Erreur d'outil : jamais l'exception brute dans le `ToolMessage` — logger avec un `error_id`, ne remonter au modèle qu'un message clair + cette référence

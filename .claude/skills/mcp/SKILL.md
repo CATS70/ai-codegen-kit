@@ -114,6 +114,59 @@ async def delete_user(user_id: int, confirm: bool = False) -> dict:
 # Valider les paramètres d'entrée avant toute opération
 ```
 
+## Gestion des erreurs
+
+Par défaut, une exception Python non interceptée dans un outil est convertie par fastmcp en un message générique côté client ("Error calling tool") — le modèle, et l'utilisateur derrière lui, n'ont rien d'exploitable. Deux leviers, à utiliser ensemble :
+
+**Masquer les détails internes, mais logger avec un identifiant traçable**
+
+```python
+mcp = FastMCP(
+    name=settings.app_name,
+    version=settings.app_version,
+    mask_error_details=True,   # aucune stack trace/détail interne ne fuite vers le client
+)
+```
+
+```python
+# core/errors.py
+import logging
+import uuid
+
+logger = logging.getLogger(__name__)
+
+def log_error(exc: Exception, **context) -> str:
+    """Logge l'exception avec un error_id court, à inclure dans le ToolError renvoyé au modèle."""
+    error_id = uuid.uuid4().hex[:8]
+    logger.error("Tool error", exc_info=exc, extra={"error_id": error_id, **context})
+    return error_id
+```
+
+**`ToolError` pour tout ce qui doit atteindre le modèle**
+
+`mask_error_details=True` empêche une exception non interceptée de fuiter une stack trace — mais sans relève explicite en `ToolError`, l'appelant ne voit qu'un message générique inexploitable. Toujours intercepter et re-lever, jamais laisser fastmcp masquer silencieusement une panne réelle.
+
+```python
+from fastmcp.exceptions import ToolError
+from app.core.errors import log_error
+
+@mcp.tool()
+async def search_products(query: str, limit: int = 10) -> list[dict]:
+    """Recherche des produits par nom ou description."""
+    if not query.strip():
+        # Erreur de saisie — le modèle comprend directement, pas besoin de référence
+        raise ToolError("Le paramètre query ne peut pas être vide.")
+
+    try:
+        products = await product_service.search(query, limit)
+    except ProductServiceUnavailable as e:
+        # Panne système, hors contrôle du modèle — la référence permet de retrouver le log
+        error_id = log_error(e, query=query)
+        raise ToolError(f"Service de recherche indisponible (réf. {error_id}).")
+
+    return [{"id": p.id, "name": p.name, "price": float(p.price)} for p in products]
+```
+
 ## Lancement du serveur
 
 ```python
@@ -151,3 +204,5 @@ if __name__ == "__main__":
 - Jamais de secrets dans les retours d'outils
 - Un serveur MCP par domaine métier (pas de serveur monolithique)
 - Tester les outils unitairement avant intégration avec Claude Code
+- `mask_error_details=True` sur le serveur — aucune stack trace ne doit fuiter vers le modèle
+- Erreur inattendue (panne système, dépendance externe) → catch, logger avec un `error_id`, relever en `ToolError` incluant cette référence ; erreur de saisie → `ToolError` direct, sans référence

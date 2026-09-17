@@ -124,6 +124,7 @@ Partir toujours de `/spec` avant `/implement`. Ne jamais coder sans `spec-final.
 - Implémenter uniquement ce qui est demandé
 - Un fichier = une responsabilité
 - Toute opération pouvant échouer (I/O, appel réseau, service tiers, traitement de fond) est interceptée et son échec est rendu **visible à l'utilisateur concerné** — jamais seulement loggé ou stocké de façon passive/consultable sur demande. Synchrone : erreur explicite dans la réponse (code HTTP + message). Asynchrone/arrière-plan : signal actif obligatoire (notification, badge non-neutre) — un statut neutre ne doit jamais masquer un échec total ou partiel
+- Toute erreur inattendue affichée à l'utilisateur porte un identifiant de corrélation (`request_id`), identique dans le log serveur correspondant (voir skills `security`/`fastapi`) — l'utilisateur doit pouvoir le transmettre au support sans que l'équipe ait à recouper les logs à l'aveugle
 
 **Documentation**
 - Fonctions et classes : docstring décrivant ce que ça fait, les paramètres clés et le retour

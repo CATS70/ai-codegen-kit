@@ -106,11 +106,28 @@ Le SDK distingue deux familles d'erreurs — le critère de choix : *« un modè
 - **Oui** → `ToolError` : erreur d'exécution/validation que le modèle peut corriger. Le message est retourné au modèle, qui peut réessayer avec de meilleures données.
 - **Non** → `MCPError` : erreur au niveau protocole (requête invalide, service indisponible). Pas de message destiné au modèle ; l'appel échoue au niveau JSON-RPC.
 
+Pour une `MCPError` (panne système, hors contrôle du modèle), un `message` générique ("Fournisseur catalogue indisponible") ne suffit pas : sans identifiant commun avec le log serveur, personne — ni l'humain derrière le client MCP, ni le support — ne peut retrouver la cause. Le champ `data` de `ErrorData` (JSON-RPC 2.0, valeur libre définie par le serveur) est fait pour ça.
+
+```python
+# core/errors.py
+import logging
+import uuid
+
+logger = logging.getLogger(__name__)
+
+def log_error(exc: Exception, **context) -> str:
+    """Logge l'exception avec un error_id court, à inclure dans la MCPError renvoyée au client."""
+    error_id = uuid.uuid4().hex[:8]
+    logger.error("MCP tool error", exc_info=exc, extra={"error_id": error_id, **context})
+    return error_id
+```
+
 ```python
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp import MCPError
 from mcp.types import INVALID_PARAMS
+from app.core.errors import log_error
 
 mcp = MCPServer("Catalog")
 
@@ -119,7 +136,7 @@ async def get_author(title: str) -> str:
     """Recherche l'auteur d'un livre dans le catalogue."""
     book = await catalog_service.find_by_title(title)
     if book is None:
-        # Le modèle peut corriger le titre → ToolError
+        # Le modèle peut corriger le titre → ToolError, pas besoin d'error_id, cas déjà clair
         raise ToolError(f"Aucun livre nommé {title!r} dans le catalogue.")
     return book.author
 
@@ -128,10 +145,17 @@ async def sync_catalog() -> dict:
     """Synchronise le catalogue depuis le fournisseur externe."""
     try:
         return await catalog_service.sync()
-    except CatalogProviderUnavailable:
-        # Erreur serveur, hors contrôle du modèle → MCPError
-        raise MCPError(code=INVALID_PARAMS, message="Fournisseur catalogue indisponible")
+    except CatalogProviderUnavailable as e:
+        # Erreur serveur, hors contrôle du modèle → MCPError avec error_id traçable dans les logs
+        error_id = log_error(e)
+        raise MCPError(
+            code=INVALID_PARAMS,
+            message="Fournisseur catalogue indisponible",
+            data={"error_id": error_id},
+        )
 ```
+
+Sur le transport `streamable-http` (contrairement à `stdio`, qui n'a pas de couche HTTP), le serveur tourne sur ASGI — réutiliser directement `CorrelationIdMiddleware` (skill `security`) plutôt que générer un `error_id` séparé : `correlation_id.get()` donne la même valeur que celle déjà loggée par le reste de la stack HTTP.
 
 ## Sécurité des outils
 
@@ -194,6 +218,7 @@ Host/port sont configurables — ne jamais les coder en dur en dehors d'un défa
 - Docstring claire sur chaque outil — le modèle en dépend pour décider quand l'appeler
 - Retours en types simples (dict, list, str) — pas d'objets SQLAlchemy
 - `ToolError` pour les erreurs récupérables par le modèle, `MCPError` pour les erreurs protocole/serveur — jamais d'exception brute non interceptée
+- Toute `MCPError` liée à une panne système (pas une erreur de saisie) porte un `error_id` dans `data`, identique dans les logs serveur
 - Opérations destructives avec paramètre `confirm: bool = False`
 - Jamais de secrets dans les retours d'outils
 - Un serveur MCP par domaine métier (pas de serveur monolithique)

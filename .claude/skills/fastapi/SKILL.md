@@ -122,18 +122,54 @@ async def login(data: LoginRequest, db: DB) -> TokenResponse:
 
 ## Gestion des erreurs
 
-```python
-# Erreur métier connue
-raise HTTPException(status_code=404, detail="User not found")
+Le middleware `CorrelationIdMiddleware` (skill `security`) doit être enregistré dans `main.py` avant tout le reste — il alimente `correlation_id.get()` utilisé ci-dessous.
 
-# Handler global pour erreurs inattendues — dans main.py
+**Un seul point de sortie pour toutes les erreurs**
+
+Les routes continuent d'écrire `raise HTTPException(status_code=404, detail="User not found")` normalement — rien ne change au niveau des sites d'appel. L'enveloppe RFC 9457 + `request_id` est appliquée une seule fois, à la sortie, via un handler global sur `StarletteHTTPException` : comme `fastapi.HTTPException` en hérite, ce handler capte aussi bien les `HTTPException` simples que celles levées par Starlette lui-même. Uniformiser le format de sortie ne coûte donc qu'un seul handler, pas une modification de chaque site d'appel — et évite au frontend de devoir gérer deux formats de réponse différents.
+
+```python
+# core/errors.py — construction centralisée de l'enveloppe RFC 9457
+from http import HTTPStatus
+
+from asgi_correlation_id import correlation_id
+from starlette.responses import JSONResponse
+
+
+def problem_response(status_code: int, detail: str, title: str | None = None) -> JSONResponse:
+    """Réponse d'erreur RFC 9457 (Problem Details), avec le request_id de corrélation."""
+    request_id = correlation_id.get() or ""
+    return JSONResponse(
+        status_code=status_code,
+        media_type="application/problem+json",
+        headers={"X-Request-ID": request_id},  # absent par défaut sur les 500 — cf. doc asgi-correlation-id
+        content={
+            "type": "about:blank",
+            "title": title or HTTPStatus(status_code).phrase,
+            "status": status_code,
+            "detail": detail,
+            "request_id": request_id,
+        },
+    )
+```
+
+```python
+# main.py
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from asgi_correlation_id import correlation_id
+from app.core.errors import problem_response
+
+# Capte TOUTE HTTPException (simple raise dans une route, ou levée par Starlette/FastAPI
+# lui-même) — sans ce handler, FastAPI renvoie {"detail": "..."} sans request_id.
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return problem_response(exc.status_code, str(exc.detail))
+
+# Handler pour erreurs inattendues (bug, dépendance externe en échec, etc.)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error("Unexpected error", exc_info=exc)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"},
-    )
+    logger.error("Unexpected error", exc_info=exc, extra={"request_id": correlation_id.get()})
+    return problem_response(500, "Une erreur inattendue est survenue.", title="Internal Server Error")
 ```
 
 **Exceptions typées par couche :**
@@ -145,25 +181,32 @@ Un `Exception` générique dans le handler masque les erreurs métier derrière 
 class AppError(Exception):
     """Base pour toutes les erreurs applicatives typées."""
     status_code: int = 500
+    title: str = "Internal Server Error"
     detail: str = "Internal server error"
 
 class NotFoundError(AppError):
     status_code = 404
+    title = "Not Found"
     def __init__(self, resource: str):
         self.detail = f"{resource} not found"
 
 class ConflictError(AppError):
     status_code = 409
+    title = "Conflict"
 
 class UnauthorizedError(AppError):
     status_code = 401
+    title = "Unauthorized"
     detail = "Authentication required"
 
 # main.py — handler dédié aux erreurs applicatives
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):
-    logger.warning("Application error", extra={"status": exc.status_code, "detail": exc.detail})
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    logger.warning(
+        "Application error",
+        extra={"status": exc.status_code, "detail": exc.detail, "request_id": correlation_id.get()},
+    )
+    return problem_response(exc.status_code, exc.detail, title=exc.title)
 
 # services/user_service.py — usage dans un service
 async def get_user_or_404(db: AsyncSession, user_id: int) -> User:
@@ -172,6 +215,10 @@ async def get_user_or_404(db: AsyncSession, user_id: int) -> User:
         raise NotFoundError("User")   # propagé jusqu'au handler, retourne 404
     return user
 ```
+
+**Tracker d'erreurs (optionnel)**
+
+Un SDK d'error tracking (Sentry ou équivalent) capture automatiquement l'exception avec le `request_id` en tag, indépendamment du volume — ce n'est pas réservé aux projets à forte charge, le tier gratuit courant (quelques milliers d'erreurs/mois) couvre largement un projet naissant. C'est un service tiers hébergé : ne pas l'ajouter par défaut, le proposer et attendre confirmation explicite avant de l'implémenter.
 
 ## Configuration de l'application
 
