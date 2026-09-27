@@ -26,16 +26,32 @@ app.include_router(products.router)
 Les routes orchestrent, elles ne contiennent pas de logique métier.
 
 ```python
-@router.post("/", response_model=UserResponse, status_code=201)
+@router.post("/", status_code=201)
 async def create_user(data: UserCreate, db: DB, _: CurrentUser) -> UserResponse:
     return await user_service.create_user(db, data)
 ```
 
-## Response model — toujours déclaré
+## Response model — annotation de retour, pas de duplication
 
-- Toujours `response_model` sur chaque route
+Le type de retour annoté (`-> UserResponse`) suffit à FastAPI pour générer le schéma et valider la réponse. Ajouter `response_model=UserResponse` en plus quand il est identique au type de retour est une duplication que SonarQube signale (S8409) — deux endroits pour la même information, qui peuvent diverger avec le temps.
+
+- Ne déclarer `response_model` explicitement que lorsqu'il **diffère** du type de retour interne (ex : masquer un champ sensible avant sérialisation)
 - Séparer schémas d'entrée (`UserCreate`, `UserUpdate`) et de sortie (`UserResponse`)
 - Ne jamais retourner un modèle SQLAlchemy directement
+
+```python
+# ✅ response_model omis — le type de retour suffit, FastAPI l'utilise directement
+@router.get("/{user_id}")
+async def get_user(user_id: int, db: DB) -> UserResponse:
+    return await user_service.get_user_or_404(db, user_id)
+
+# ✅ response_model nécessaire — le type interne diffère du schéma public
+@router.get("/{user_id}/profile", response_model=UserPublic)
+async def get_user_profile(user_id: int, db: DB) -> UserInternal:
+    # UserInternal porte des champs sensibles (hash de mot de passe, etc.)
+    # que UserPublic ne doit pas exposer — ici response_model est requis
+    return await user_service.get_user_full(db, user_id)
+```
 
 ## Injection de dépendances — pattern `Annotated` (obligatoire)
 
@@ -302,13 +318,15 @@ La session SQLAlchemy de la requête est fermée dès que la dépendance est lib
 
 ## Middleware
 
-Ordre d'enregistrement dans `main.py` (dernier ajouté = exécuté en premier) :
+Ordre d'enregistrement dans `main.py` (dernier ajouté = exécuté en premier sur la requête, en dernier sur la réponse) :
 
 ```python
-app.add_middleware(CORSMiddleware, ...)      # 1er exécuté
 app.add_middleware(GZipMiddleware, ...)
+app.add_middleware(CORSMiddleware, ...)      # ajouté en dernier — SonarQube l'exige (S8414)
 # auth gérée via Depends, pas middleware global
 ```
+
+`CORSMiddleware` doit toujours être ajouté **en dernier** : il doit intercepter les requêtes preflight `OPTIONS` avant tout autre middleware, et ajouter ses en-têtes en tout dernier sur la réponse — y compris sur une réponse d'erreur produite par un middleware plus interne.
 
 ## Documentation des routes
 
