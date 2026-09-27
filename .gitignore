@@ -1,2 +1,6 @@
 examples/
 eval-test.md
+docs/sonarqube/
+.env
+.venv/
+__pycache__/
